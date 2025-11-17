@@ -1,8 +1,11 @@
 {
-  "builds": [
-    { "src": "Dockerfile", "use": "@vercel/docker" }
-  ],
+  "version": 2,
+  "functions": {
+    "main.py": {
+      "runtime": "python3.12"
+    }
+  },
   "routes": [
-    { "src": "/(.*)", "dest": "/" }
+    { "src": "/(.*)", "dest": "/main.py" }
   ]
 }
