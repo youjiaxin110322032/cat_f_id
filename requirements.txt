@@ -2,6 +2,12 @@ fastapi
 uvicorn
 pydantic
 python-multipart
+numpy
+Pillow
+scikit-learn
+joblib
+
+werkzeug==1.0.1
 
 numpy
 pillow
@@ -10,5 +16,4 @@ scikit-learn
 joblib
 
 sqlalchemy
-sqlalchemy.orm
 greenlet
