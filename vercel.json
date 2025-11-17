@@ -5,6 +5,11 @@
       "runtime": "@vercel/python@3.0.0"
     }
   },
+  "build": {
+    "env": {
+      "VERCEL_PYTHON_VERSION": "3.12" 
+    }
+  },
   "routes": [
     { "src": "/(.*)", "dest": "/api/main.py" }
   ]
