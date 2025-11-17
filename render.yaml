@@ -1,0 +1,10 @@
+﻿services:
+  - type: web
+    name: cat-face-id-api
+    env: python
+    plan: free
+    pythonVersion: 3.12.5
+    buildCommand: >
+      pip install --upgrade pip &&
+      PIP_ONLY_BINARY=:all: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port \

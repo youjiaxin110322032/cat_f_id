@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Cat Face ID — Mobile</title>
+  <link rel="stylesheet" href="normalize.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>喵喵株式會社</h1>
+        <nav>
+            <p><a href="aboutus.html">關於我們</a></p>
+            <p><a href="index.html">員工辨識</a></p>
+            <p><a href="aboutsystem.html">系統介紹</a></p>
+        </nav>
+    </header>
+    <!-- 以下設定貓掌造型游標 -->
+    <img id="cat-cursor" src="more_img\cat_hand.png" alt="cat paw">
+    <script>
+const catCursor = document.getElementById('cat-cursor');
+
+document.addEventListener('mousemove', e => {
+  catCursor.style.left = `${e.clientX}px`;
+  catCursor.style.top = `${e.clientY}px`;
+});
+
+document.addEventListener('click', e => {
+  // 點擊動畫
+  catCursor.style.transform = 'scale(0.8)';
+  setTimeout(() => {
+    catCursor.style.transform = 'scale(1)';
+  }, 100);
+
+  // 模擬點擊底下的按鈕或可點擊元素
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  if (el && (el.tagName === 'BUTTON' || el.tagName === 'LABEL')) {
+    el.click();
+  }
+});
+    </script>
+</body>

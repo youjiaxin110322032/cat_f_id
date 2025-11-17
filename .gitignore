@@ -1,0 +1,62 @@
+# === Python 一般忽略項目 ===
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*$py.class
+
+# === 虛擬環境 ===
+.venv/
+env/
+venv/
+ENV/
+
+# === Jupyter Notebook 的暫存檔 ===
+.ipynb_checkpoints/
+
+# === 編譯與打包 ===
+build/
+dist/
+*.egg-info/
+*.egg
+
+# === IDE & 系統暫存檔 ===
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# === 快取與日誌 ===
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+*.cache/
+logs/
+
+# === 模型與資料 ===
+*.pkl
+*.joblib
+*.npy
+*.npz
+*.h5
+*.ckpt
+*.pth
+cat_knn.pkl
+labels.json
+
+# === 測試或暫存影像 ===
+*.jpg
+*.jpeg
+*.png
+*.gif
+uploads/
+tmp/
+
+# === Render / 部署自動產物 ===
+*.pid
+*.lock
+__pycache__/
+.env
