@@ -1,0 +1,20 @@
+{
+  "name2id": {
+    ".git": 0,
+    ".venv": 1,
+    ".vscode": 2,
+    "__pycache__": 3,
+    "coco": 4,
+    "jojo": 5,
+    "mama": 6
+  },
+  "id2name": {
+    "0": ".git",
+    "1": ".venv",
+    "2": ".vscode",
+    "3": "__pycache__",
+    "4": "coco",
+    "5": "jojo",
+    "6": "mama"
+  }
+}
