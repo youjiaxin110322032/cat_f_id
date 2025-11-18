@@ -1,5 +1,6 @@
 # api/index.py
 import io
+import os
 import numpy as np
 from PIL import Image
 from fastapi import FastAPI, UploadFile, File, HTTPException
@@ -32,13 +33,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # === 🐾 前端靜態檔案（放在 frontend 資料夾內） ===
 if not os.path.exists("frontend"):
     os.makedirs("frontend")
 
-@app.mount("/static", StaticFiles(directory="frontend"), name="static")
+app.mount("/static", StaticFiles(directory="frontend"), name="static")
 # 啟動時載入模型（Serverless：函式實例冷啟動時會跑一次）
+knn, id2name = load_model()
 knn, id2name = load_model()
 
 @app.get("/")
@@ -47,7 +48,6 @@ def root():
     if os.path.exists(index_path):
         return FileResponse(index_path)
     return {"detail": "frontend/index.html not found"}
-
 # === 🧠 模型與資料 ===
 comments_db = {}  # {"mama": ["留言1"], "tama": ["留言2"]}
 knn, id2name = load_model()
@@ -97,6 +97,9 @@ async def predict(file: UploadFile = File(...)):
             })
 
         return {"width": W, "height": H, "boxes": boxes}
+    except Exception as e:
+        # 返回 400 或 500 視需求調整，這裡回傳 400 並帶上錯誤訊息
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/comments")
