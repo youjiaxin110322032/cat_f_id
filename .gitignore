@@ -48,9 +48,9 @@ logs/
 #labels.json
 
 # === 測試或暫存影像 ===
-*.jpg
-*.jpeg
-*.png
+#*.jpg
+#*.jpeg
+#*.png
 *.gif
 uploads/
 tmp/
@@ -61,4 +61,4 @@ tmp/
 __pycache__/
 .env
 
-.vercel
+*venv311/

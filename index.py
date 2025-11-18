@@ -4,6 +4,8 @@ import numpy as np
 from PIL import Image
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 # 你的辨識模組（確保這些檔案在 repo 根目錄，或可被 import）
 # - catfaces_demo.py
@@ -31,12 +33,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# === 🐾 前端靜態檔案（放在 frontend 資料夾內） ===
+if not os.path.exists("frontend"):
+    os.makedirs("frontend")
+
+@app.mount("/static", StaticFiles(directory="frontend"), name="static")
 # 啟動時載入模型（Serverless：函式實例冷啟動時會跑一次）
 knn, id2name = load_model()
 
 @app.get("/")
 def root():
-    return {"ok": True, "message": "FastAPI running on Vercel (serverless function)."}
+    index_path = os.path.join("frontend", "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"detail": "frontend/index.html not found"}
+
+# === 🧠 模型與資料 ===
+comments_db = {}  # {"mama": ["留言1"], "tama": ["留言2"]}
+knn, id2name = load_model()
+
 
 @app.get("/ping")
 def ping():
@@ -83,5 +98,18 @@ async def predict(file: UploadFile = File(...)):
 
         return {"width": W, "height": H, "boxes": boxes}
 
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid image or server error: {e}")
+
+@app.get("/comments")
+def get_comments(cat_name: str):
+    return {"cat": cat_name, "comments": comments_db.get(cat_name, [])}
+
+@app.post("/comment")
+def post_comment(cat_name: str, payload: dict):
+    text = payload.get("text", "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Empty comment")
+    if cat_name not in comments_db:
+        comments_db[cat_name] = []
+    comments_db[cat_name].append(text)
+    return {"cat": cat_name, "comments": comments_db[cat_name]}
+
