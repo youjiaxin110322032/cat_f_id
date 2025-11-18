@@ -9,6 +9,6 @@
     "VERCEL_PYTHON_VERSION": "3.12"
   },
   "routes": [
-    { "src": "/(.*)", "dest": "/api/index.py" }
+    { "src": "/(.*)", "dest": "index.py" }
   ]
 }
