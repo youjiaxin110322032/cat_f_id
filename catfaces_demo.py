@@ -12,8 +12,8 @@ from sklearn.metrics import confusion_matrix, classification_report
 # -----------------------
 # 可調參數（簡化版本）
 # -----------------------
-UNKNOWN_THRESHOLD = 0.35  # 建議先 0.55~0.65，之後再依資料微調
-DATA_DIR = r"C:\Users\11032\Desktop\cats"  # 資料集根目錄：cats/<cat_name>/*.jpg
+UNKNOWN_THRESHOLD = 0.0  # 建議先 0.55~0.65，之後再依資料微調
+DATA_DIR = os.path.join(os.path.dirname(__file__), "cats")  # 資料集根目錄：cats/<cat_name>/*.jpg
 MODEL_PATH = "cat_knn.pkl"        # 模型檔
 LABELS_PATH = "labels.json"       # 貓名與數字 id 對照
 FACE_SIZE = (128, 128)            # 取樣尺寸

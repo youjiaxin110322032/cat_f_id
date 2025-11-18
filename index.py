@@ -50,8 +50,12 @@ def root():
     return {"detail": "frontend/index.html not found"}
 # === 🧠 模型與資料 ===
 comments_db = {}  # {"mama": ["留言1"], "tama": ["留言2"]}
-knn, id2name = load_model()
-
+# 載入模型
+try:
+    knn, id2name = load_model()
+except RuntimeError as e:
+    print("[warning] load_model 失敗：", e)
+    knn, id2name = None, {}
 
 @app.get("/ping")
 def ping():
@@ -71,6 +75,8 @@ def reload_model():
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
+    if knn is None:
+        raise HTTPException(status_code=503, detail="Model not loaded on server.")
     try:
         raw = await file.read()
         # 讀圖（RGB）→ Numpy → BGR（給 OpenCV 流程使用）
