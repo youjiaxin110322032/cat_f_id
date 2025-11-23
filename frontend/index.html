@@ -131,6 +131,7 @@
       <p><a href="/static/index.html">員工辨識</a></p>
       <p><a href="/static/aboutsystem.html">系統介紹</a></p>
       <p><a href="#" id="navBtnLogin">登入</a></p>
+      <p><a href="#" id="navBtnRegister">註冊</a></p>
       <p><a href="#" id="navBtnLogout" style="display:none;">登出 (<span id="userEmail"></span>)</a></p>
     </nav>
   </header>
@@ -164,8 +165,26 @@
         <div style="display: flex; gap: 10px; justify-content: center;">
           <button id="btnDoLogin" style="background: #7a6c00; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer;">登入</button>
           <button id="btnCancelLogin" style="background: #ccc; color: #333; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer;">取消</button>
+          <span class="switch-link" id="gotoRegister">還沒有帳號？點此註冊</span>
         </div>
         <p id="loginError" style="color: red; font-size: 12px; margin-top: 10px;"></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="registerModal" class="backdrop" style="display: none;">
+    <div class="modal" style="width: 300px; text-align: center;">
+      <div class="modalNames">新會員註冊</div>
+      <div style="padding: 20px;">
+        <input type="email" id="regEmail" placeholder="請輸入 Email" style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;">
+        <input type="password" id="regPwd" placeholder="設定密碼 (6位以上)" style="width: 100%; padding: 8px; margin-bottom: 20px; box-sizing: border-box;">
+        
+        <div style="display: flex; gap: 10px; justify-content: center;">
+          <button id="btnDoRegister" style="background: #28a745; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer;">確認註冊</button>
+          <button class="btnCancel" style="background: #ccc; color: #333; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer;">取消</button>
+        </div>
+        <p id="regError" style="color: red; font-size: 12px; margin-top: 10px;"></p>
+        <span class="switch-link" id="gotoLogin">已有帳號？點此登入</span>
       </div>
     </div>
   </div>
@@ -213,12 +232,32 @@
   const navBtnLogout = document.getElementById('navBtnLogout');
   const userEmailSpan = document.getElementById('userEmail');
   
+  // 登入相關元素
   const loginModal = document.getElementById('loginModal');
   const loginEmail = document.getElementById('loginEmail');
   const loginPwd = document.getElementById('loginPwd');
   const btnDoLogin = document.getElementById('btnDoLogin');
   const btnCancelLogin = document.getElementById('btnCancelLogin');
   const loginError = document.getElementById('loginError');
+
+  // 註冊相關元素
+  const registerModal = document.getElementById('registerModal');
+  const regEmail = document.getElementById('regEmail');
+  const regPwd = document.getElementById('regPwd');
+  const btnDoRegister = document.getElementById('btnDoRegister');
+  const regError = document.getElementById('regError');
+
+  // 切換連結
+  const gotoRegister = document.getElementById('gotoRegister');
+  const gotoLogin = document.getElementById('gotoLogin');
+
+  // 通用關閉按鈕
+  document.querySelectorAll('.btnCancel').forEach(btn => {
+    btn.addEventListener('click', () => {
+      loginModal.style.display = 'none';
+      registerModal.style.display = 'none';
+    });
+  });
 
   // 監聽登入狀態改變
   onAuthStateChanged(auth, (user) => {
@@ -244,9 +283,12 @@
     loginError.textContent = '';
   });
 
-  // 關閉登入視窗
-  btnCancelLogin.addEventListener('click', () => {
+  // 開啟註冊視窗
+  navBtnRegister.addEventListener('click', (e) => {
+    e.preventDefault();
+    registerModal.style.display = 'flex';
     loginModal.style.display = 'none';
+    regError.textContent = '';
   });
 
   // 執行登入
@@ -266,6 +308,52 @@
   });
 
   // 執行登出
+  navBtnLogout.addEventListener('click', (e) => {
+    e.preventDefault();
+    signOut(auth).then(() => {
+      alert('已登出');
+    });
+  });
+
+  btnDoRegister.addEventListener('click', async () => {
+    const email = regEmail.value;
+    const password = regPwd.value;
+    
+    if(password.length < 6){
+        regError.textContent = "密碼長度需至少 6 個字元";
+        return;
+    }
+
+    try {
+      // 建立帳號
+      await createUserWithEmailAndPassword(auth, email, password);
+      alert("註冊成功！已自動登入。");
+      registerModal.style.display = 'none';
+      regEmail.value = '';
+      regPwd.value = '';
+    } catch (error) {
+      if (error.code === 'auth/email-already-in-use') {
+        regError.textContent = "此 Email 已經被註冊過了";
+      } else {
+        regError.textContent = "註冊失敗：" + error.message;
+      }
+    }
+  });
+
+  // --- 視窗切換邏輯 ---
+  gotoRegister.addEventListener('click', () => {
+    loginModal.style.display = 'none';
+    registerModal.style.display = 'flex';
+    regError.textContent = '';
+  });
+
+  gotoLogin.addEventListener('click', () => {
+    registerModal.style.display = 'none';
+    loginModal.style.display = 'flex';
+    loginError.textContent = '';
+  });
+
+  // --- 登出邏輯 ---
   navBtnLogout.addEventListener('click', (e) => {
     e.preventDefault();
     signOut(auth).then(() => {
@@ -362,14 +450,6 @@
     closeBtn.addEventListener('click', () => backdrop.remove());
     backdrop.addEventListener('click', e => { if (e.target === backdrop) backdrop.remove(); });
 
-      // 👇 新增：取得當前登入的使用者
-    const user = auth.currentUser; 
-    // 如果有登入就用 Email，沒登入就顯示 "匿名"
-    const username = user ? user.email.split('@')[0] : "匿名路人"; 
-
-    // 👇 把名字組合成留言內容 (或是後端 API 支援 username 欄位的話更好，這邊示範直接併入文字)
-    const finalComment = `[${username}]: ${text}`;
-
     const commentInput = backdrop.querySelector('.commentInput');
     const commentBtn = backdrop.querySelector('.commentBtn');
     const commentList = backdrop.querySelector('.comment-list');
@@ -392,12 +472,12 @@
       const text = commentInput.value.trim();
       if (!text) return;
 
-      // 在這裡取得當下的使用者
+      // 👇 新增：取得當前登入的使用者
       const user = auth.currentUser; 
       // 如果有登入就用 Email，沒登入就顯示 "匿名"
       const username = user ? user.email.split('@')[0] : "匿名路人"; 
 
-      // 組合留言內容
+      // 👇 把名字組合成留言內容 (或是後端 API 支援 username 欄位的話更好，這邊示範直接併入文字)
       const finalComment = `[${username}]: ${text}`;
 
       try {
