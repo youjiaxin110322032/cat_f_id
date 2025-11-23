@@ -130,6 +130,8 @@
       <p><a href="/static/aboutus.html">關於我們</a></p>
       <p><a href="/static/index.html">員工辨識</a></p>
       <p><a href="/static/aboutsystem.html">系統介紹</a></p>
+      <p><a href="#" id="navBtnLogin">登入</a></p>
+      <p><a href="#" id="navBtnLogout" style="display:none;">登出 (<span id="userEmail"></span>)</a></p>
     </nav>
   </header>
 
@@ -152,10 +154,47 @@
     </div>
   </div>
 
+  <div id="loginModal" class="backdrop" style="display: none;">
+    <div class="modal" style="width: 300px; text-align: center;">
+      <div class="modalNames">管理員登入</div>
+      <div style="padding: 20px;">
+        <input type="email" id="loginEmail" placeholder="Email" style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;">
+        <input type="password" id="loginPwd" placeholder="密碼" style="width: 100%; padding: 8px; margin-bottom: 20px; box-sizing: border-box;">
+        
+        <div style="display: flex; gap: 10px; justify-content: center;">
+          <button id="btnDoLogin" style="background: #7a6c00; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer;">登入</button>
+          <button id="btnCancelLogin" style="background: #ccc; color: #333; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer;">取消</button>
+        </div>
+        <p id="loginError" style="color: red; font-size: 12px; margin-top: 10px;"></p>
+      </div>
+    </div>
+  </div>
+
   <!-- ✅ 改成 /static/... -->
   <img id="cat-cursor" src="/static/more_img/cat_hand.png" alt="cat paw">
 
-  <script>
+  <script type="module">
+
+  // 👇 1. 引入 Firebase SDK (使用 CDN)
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+  // 👇 2. 貼上你的 Firebase 設定 (從 Firebase Console -> Project Settings -> General -> 下滑到 Your apps 複製)
+  const firebaseConfig = {
+    apiKey: "AIzaSyDcvsZn418xMLXL9KuM5FQaAmFhtsCvd8E",
+    authDomain: "cat-f-id.firebaseapp.com",
+    databaseURL: "https://cat-f-id-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "cat-f-id",
+    storageBucket: "cat-f-id.firebasestorage.app",
+    messagingSenderId: "717846269620",
+    appId: "1:717846269620:web:4b6d0ae716b7b60ae891e1"
+  };
+
+  // 初始化 Firebase
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  // 👆 Firebase 初始化結束
+
   const API_URL = 'http://127.0.0.1:8000/predict';
   document.getElementById('api-url').textContent = API_URL;
 
@@ -166,6 +205,77 @@
   const btnStart = document.getElementById('btnStart');
   const btnShot  = document.getElementById('btnShot');
   const knownCats = document.getElementById('knownCats');
+
+  // ==========================================
+  // 👇 新增：Firebase 登入/登出 邏輯
+  // ==========================================
+  const navBtnLogin = document.getElementById('navBtnLogin');
+  const navBtnLogout = document.getElementById('navBtnLogout');
+  const userEmailSpan = document.getElementById('userEmail');
+  
+  const loginModal = document.getElementById('loginModal');
+  const loginEmail = document.getElementById('loginEmail');
+  const loginPwd = document.getElementById('loginPwd');
+  const btnDoLogin = document.getElementById('btnDoLogin');
+  const btnCancelLogin = document.getElementById('btnCancelLogin');
+  const loginError = document.getElementById('loginError');
+
+  // 監聽登入狀態改變
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      // 已登入
+      navBtnLogin.style.display = 'none';
+      navBtnLogout.style.display = 'inline';
+      userEmailSpan.textContent = user.email;
+      console.log("User logged in:", user.email);
+    } else {
+      // 未登入
+      navBtnLogin.style.display = 'inline';
+      navBtnLogout.style.display = 'none';
+      userEmailSpan.textContent = '';
+      console.log("User logged out");
+    }
+  });
+  
+  // 開啟登入視窗
+  navBtnLogin.addEventListener('click', (e) => {
+    e.preventDefault();
+    loginModal.style.display = 'flex';
+    loginError.textContent = '';
+  });
+
+  // 關閉登入視窗
+  btnCancelLogin.addEventListener('click', () => {
+    loginModal.style.display = 'none';
+  });
+
+  // 執行登入
+  btnDoLogin.addEventListener('click', async () => {
+    const email = loginEmail.value;
+    const password = loginPwd.value;
+    
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      loginModal.style.display = 'none'; // 登入成功關閉視窗
+      // 清空輸入框
+      loginEmail.value = '';
+      loginPwd.value = '';
+    } catch (error) {
+      loginError.textContent = "登入失敗：" + error.message;
+    }
+  });
+
+  // 執行登出
+  navBtnLogout.addEventListener('click', (e) => {
+    e.preventDefault();
+    signOut(auth).then(() => {
+      alert('已登出');
+    });
+  });
+
+  // ==========================================
+  // 原有的初始化執行 (IIFE)
+  // ==========================================
 
   let currentStream = null;
   let toJpegQuality = 0.9;
@@ -252,6 +362,14 @@
     closeBtn.addEventListener('click', () => backdrop.remove());
     backdrop.addEventListener('click', e => { if (e.target === backdrop) backdrop.remove(); });
 
+      // 👇 新增：取得當前登入的使用者
+    const user = auth.currentUser; 
+    // 如果有登入就用 Email，沒登入就顯示 "匿名"
+    const username = user ? user.email.split('@')[0] : "匿名路人"; 
+
+    // 👇 把名字組合成留言內容 (或是後端 API 支援 username 欄位的話更好，這邊示範直接併入文字)
+    const finalComment = `[${username}]: ${text}`;
+
     const commentInput = backdrop.querySelector('.commentInput');
     const commentBtn = backdrop.querySelector('.commentBtn');
     const commentList = backdrop.querySelector('.comment-list');
@@ -273,11 +391,20 @@
     commentBtn.addEventListener('click', async () => {
       const text = commentInput.value.trim();
       if (!text) return;
+
+      // 在這裡取得當下的使用者
+      const user = auth.currentUser; 
+      // 如果有登入就用 Email，沒登入就顯示 "匿名"
+      const username = user ? user.email.split('@')[0] : "匿名路人"; 
+
+      // 組合留言內容
+      const finalComment = `[${username}]: ${text}`;
+
       try {
         const res = await fetch(`${API_URL.replace('/predict','/comment')}?cat_name=${catName}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text })
+          body: JSON.stringify({ text: finalComment }) // 傳送組合後的文字
         });
         const data = await res.json();
         renderComments(data.comments);
@@ -343,5 +470,6 @@
     }
   })();
   </script>
+
 </body>
 </html>
