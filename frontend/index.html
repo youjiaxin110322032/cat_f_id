@@ -196,7 +196,7 @@
 
   // 👇 1. 引入 Firebase SDK (使用 CDN)
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
   // 👇 2. 貼上你的 Firebase 設定 (從 Firebase Console -> Project Settings -> General -> 下滑到 Your apps 複製)
   const firebaseConfig = {
