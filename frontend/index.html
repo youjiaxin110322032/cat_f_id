@@ -283,6 +283,19 @@
     loginError.textContent = '';
   });
 
+// 關閉登入視窗 (點擊取消按鈕)
+  btnCancelLogin.addEventListener('click', () => {
+    loginModal.style.display = 'none';
+  });
+
+  // (選用) 如果你希望點擊視窗外的「黑色背景」也能關閉，可以多加這段：
+  loginModal.addEventListener('click', (e) => {
+    // 判斷點擊的目標是否為黑色背景本身 (而不是中間的白框)
+    if (e.target === loginModal) {
+      loginModal.style.display = 'none';
+    }
+  });
+
   // 開啟註冊視窗
   navBtnRegister.addEventListener('click', (e) => {
     e.preventDefault();
