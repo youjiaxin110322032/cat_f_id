@@ -1,7 +1,7 @@
 {
   "version": 2,
   "functions": {
-    "api/index.py": {
+    "index.py": {
       "runtime": "@vercel/python@3.0.0"
     }
   },
@@ -9,6 +9,6 @@
     "VERCEL_PYTHON_VERSION": "3.12"
   },
   "routes": [
-    { "src": "/(.*)", "dest": "index.py" }
+    { "src": "/(.*)", "dest": "/index.py" }
   ]
 }

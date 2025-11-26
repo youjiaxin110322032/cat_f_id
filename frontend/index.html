@@ -214,8 +214,13 @@
   const auth = getAuth(app);
   // 👆 Firebase 初始化結束
 
-  const API_URL = 'http://127.0.0.1:8000/predict';
-  document.getElementById('api-url').textContent = API_URL;
+  // 🔐 後端的 Predict API URL（上線後換成你的正式網域）
+  const API_URL = 'https://cat-f-id.onrender.com/predict';
+
+  // 🔐 給後端驗證用的 API Key（要跟後端環境變數 API_KEY 一樣）
+  // ⚠️ 放前端只是「低強度防護」，不能保密金鑰，只適合 demo 或免費資源
+
+document.getElementById('api-url').textContent = API_URL;
 
   const video = document.getElementById('preview');
   const overlay = document.getElementById('overlay');
@@ -366,14 +371,6 @@
     loginError.textContent = '';
   });
 
-  // --- 登出邏輯 ---
-  navBtnLogout.addEventListener('click', (e) => {
-    e.preventDefault();
-    signOut(auth).then(() => {
-      alert('已登出');
-    });
-  });
-
   // ==========================================
   // 原有的初始化執行 (IIFE)
   // ==========================================
@@ -420,9 +417,32 @@
   }
 
   async function sendToAPI(imageBlob){
+
+    // 1. 檢查使用者是否登入
+    const user = auth.currentUser;
+    if (!user) {
+      alert("請先登入才能使用辨識功能！");
+      throw new Error("User not logged in");
+    }
+
+    // 2. 取得 Firebase ID Token (這就是通行證)
+    const token = await user.getIdToken();
+
     const fd = new FormData();
     fd.append('file', imageBlob, 'shot.jpg');
-    const r = await fetch(API_URL, { method: 'POST', body: fd });
+
+    const r = await fetch(API_URL, { 
+      method: 'POST', 
+      headers: {
+        'Authorization': `Bearer ${token}`,  // 🛂 把 Firebase ID Token 加到請求標頭
+        //'x-api-key': API_KEY  // 🔐 把 API Key 加到請求標頭
+      },
+      body: fd 
+    });
+
+    if (r.status === 401) {
+       throw new Error("驗證失敗：請重新登入");
+    }
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     return await r.json();
   }
@@ -469,7 +489,18 @@
 
     async function loadComments() {
       try {
-        const res = await fetch(`${API_URL.replace('/predict','/comments')}?cat_name=${catName}`);
+        const user = auth.currentUser;
+        const headers = {};
+        if (user) {
+            const token = await user.getIdToken();
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const res = await fetch(
+          `${API_URL.replace('/predict','/comments')}?cat_name=${catName}`,
+          { headers }
+        );
+        
         const data = await res.json();
         renderComments(data.comments || []);
       } catch {
@@ -478,7 +509,12 @@
     }
 
     function renderComments(comments) {
-      commentList.innerHTML = comments.map(c => `<div class="comment">${c}</div>`).join('');
+      commentList.innerHTML = comments.map(c => {
+          // 如果後端還沒改成回傳物件，還是回傳字串，這裡做兼容處理
+          if (typeof c === 'string') return `<div class="comment">${c}</div>`;
+          // 如果後端回傳物件 {text, author}，顯示更豐富的資訊
+          return `<div class="comment"><strong>${c.author || '匿名'}:</strong> ${c.text}</div>`;
+      }).join('');
     }
 
     commentBtn.addEventListener('click', async () => {
@@ -487,24 +523,54 @@
 
       // 👇 新增：取得當前登入的使用者
       const user = auth.currentUser; 
-      // 如果有登入就用 Email，沒登入就顯示 "匿名"
-      const username = user ? user.email.split('@')[0] : "匿名路人"; 
-
-      // 👇 把名字組合成留言內容 (或是後端 API 支援 username 欄位的話更好，這邊示範直接併入文字)
-      const finalComment = `[${username}]: ${text}`;
+      if (!user) {
+        alert("請先登入才能留言！");
+        return;
+      }
 
       try {
-        const res = await fetch(`${API_URL.replace('/predict','/comment')}?cat_name=${catName}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: finalComment }) // 傳送組合後的文字
+      // 2. 取得 Token
+      const token = await user.getIdToken();
+
+      // 3. 準備資料 (後端現在會自己從 Token 抓名字，所以前端不用自己組字串了)
+      // 如果你的後端還是用 payload.get("text")，那維持傳送 text 即可
+      const payload = { text: text };
+
+      // 4. 發送留言請求
+      const res = await fetch(`${API_URL.replace('/predict','/comment')}?cat_name=${catName}`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json' ,
+          'Authorization': `Bearer ${token}`  // 🛂 把 Firebase ID Token 加到請求標頭
+        },
+        body: JSON.stringify(payload) // 傳送組合後的文字
         });
+
+        if (res.status === 401) {
+                    alert("驗證失效，請重新登入");
+                    return;
+                }
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+
+        }
+        // 5. 重新載入留言列表
         const data = await res.json();
         renderComments(data.comments);
-        commentInput.value = '';
+        commentInput.value = '';// 清空輸入框
+
       } catch (e) {
         alert('留言失敗：' + e.message);
       }
+
+      // 如果有登入就用 Email，沒登入就顯示 "匿名"
+      //const username = user ? user.email.split('@')[0] : "匿名路人"; 
+
+      // 👇 把名字組合成留言內容 (或是後端 API 支援 username 欄位的話更好，這邊示範直接併入文字)
+      //const finalComment = `[${username}]: ${text}`;
+
+
     });
 
     loadComments();

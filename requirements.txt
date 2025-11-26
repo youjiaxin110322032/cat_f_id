@@ -9,3 +9,5 @@ joblib
 opencv-python-headless
 sqlalchemy
 greenlet
+Flask==3.0.0
+firebase-admin==6.5.0
