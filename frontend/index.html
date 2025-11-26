@@ -6,8 +6,8 @@
   <title>Cat Face ID — Multi Cat</title>
 
   <!-- ✅ 改成從 /static/ 載入 -->
-  <link rel="stylesheet" href="/static/normalize.css">
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="https://cat-f-id.onrender.com/static/normalize.css">
+  <link rel="stylesheet" href="https://cat-f-id.onrender.com/static/style.css">
 
   <style>
   .backdrop {
@@ -126,10 +126,9 @@
   <header>
     <h1>喵喵株式會社</h1>
     <nav>
-      <!-- ✅ 改成 /static/... -->
-      <p><a href="/static/aboutus.html">關於我們</a></p>
-      <p><a href="/static/index.html">員工辨識</a></p>
-      <p><a href="/static/aboutsystem.html">系統介紹</a></p>
+      <p><a href="aboutus.html">關於我們</a></p>
+      <p><a href="index.html">員工辨識</a></p>
+      <p><a href="aboutsystem.html">系統介紹</a></p>
       <p><a href="#" id="navBtnLogin">登入</a></p>
       <p><a href="#" id="navBtnRegister">註冊</a></p>
       <p><a href="#" id="navBtnLogout" style="display:none;">登出 (<span id="userEmail"></span>)</a></p>
@@ -190,7 +189,7 @@
   </div>
 
   <!-- ✅ 改成 /static/... -->
-  <img id="cat-cursor" src="/static/more_img/cat_hand.png" alt="cat paw">
+  <img id="cat-cursor" src="https://cat-f-id.onrender.com/static/more_img/cat_hand.png" alt="cat paw">
 
   <script type="module">
 
@@ -448,10 +447,12 @@ document.getElementById('api-url').textContent = API_URL;
     return await r.json();
   }
 
+  const STATIC_BASE = 'https://cat-f-id.onrender.com/static';
+
   const catImages = {
-    mama: '/static/more_img/mama_headshot.png',
-    coco: '/static/more_img/coco_headshot.png',
-    jojo: '/static/more_img/jojo_headshot.png'
+    mama: `${STATIC_BASE}/more_img/mama_headshot.png`,
+    coco: `${STATIC_BASE}/more_img/coco_headshot.png`,
+    jojo: `${STATIC_BASE}/more_img/jojo_headshot.png`
   };
 
   function createCatModal(catName, imgUrl = null) {
@@ -462,9 +463,9 @@ document.getElementById('api-url').textContent = API_URL;
 
     backdrop.innerHTML = `
       <div class="modal">
-        <img class="modalClose" src="/static/more_img/close.png" alt="關閉">
+        <img class="modalClose" src="${STATIC_BASE}/more_img/close.png" alt="關閉">
         <div class="catresume">
-          <img src="${imgUrl || catImages[catName] || '/static/more_img/unknown_cat.png'}">
+          <img src="${imgUrl || catImages[catName] || `${STATIC_BASE}/more_img/unknown_cat.png`}">
           <div>
             <div class="modalNames">
               <span class="chip">${catName}</span>

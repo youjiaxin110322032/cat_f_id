@@ -15,8 +15,12 @@ bearer = HTTPBearer(auto_error=False)
 
 import firebase_admin # Firebase Admin SDK
 from firebase_admin import credentials, auth # 用來驗證 ID Token
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FIREBASE_PATH = os.path.join(BASE_DIR, "firebase.json")
+
 if not firebase_admin._apps:
-    cred = credentials.Certificate("firebase.json")
+    cred = credentials.Certificate(FIREBASE_PATH)
     firebase_admin.initialize_app(cred)
 
 def verify_firebase_token(
@@ -55,45 +59,23 @@ app = FastAPI(title="Cat Face ID API", version="1.1")
 API_KEY = os.getenv("API_KEY")  # 例如 "super-secret-key"
 API_KEY_HEADER_NAME = "x-api-key"
 
-api_key_header = APIKeyHeader(name=API_KEY_HEADER_NAME, auto_error=False)
-
-
-def verify_api_key(api_key: str = Security(api_key_header)):
-    """
-    Secure API 共用的驗證函式：
-    - 沒帶 x-api-key → 401
-    - key 跟環境變數設定不一樣 → 401
-    """
-    if API_KEY is None:
-        # 代表你後端根本沒設定 API_KEY，算是主機端的設定問題
-        raise HTTPException(
-            status_code=500,
-            detail="Server API_KEY is not configured."
-        )
-    if api_key != API_KEY:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid or missing API key."
-        )
-    return api_key
-
 # CORS：把前端網域加進來
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://youjiaxin110322032.github.io",  # GitHub Pages
-        # "https://你的前端其他網域",             # 之後如果有再加
-        "http://localhost:5500",                 # 本機開靜態檔測試可選擇加
-    ],
+    "https://youjiaxin110322032.github.io",
+    "http://localhost:5500",
+],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 # === 🐾 前端靜態檔案（放在 frontend 資料夾內） ===
 if not os.path.exists("frontend"):
     os.makedirs("frontend")
+
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
-# 啟動時載入模型（Serverless：函式實例冷啟動時會跑一次）
 
 # 載入模型
 try:
@@ -124,13 +106,10 @@ def labels():
     }
 
 @app.post("/reload")
-def reload_model(api_key: str = Depends(verify_api_key)):
-    """
-    可用這個端點做熱重載、鎖 API Key
-    """
+def reload_model():
     global knn, id2name
     knn, id2name = load_model()
-    return {"reloaded": True, "count": len(id2name)}
+    return {"reloaded": True}
 
 @app.post("/predict")
 async def predict(
