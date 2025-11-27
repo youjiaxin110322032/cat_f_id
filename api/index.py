@@ -16,12 +16,43 @@ bearer = HTTPBearer(auto_error=False)
 import firebase_admin # Firebase Admin SDK
 from firebase_admin import credentials, auth # 用來驗證 ID Token
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-FIREBASE_PATH = os.path.join(BASE_DIR, "firebase.json")
-
+# =========================
+# 🔥 1. Firebase 初始化 (修正路徑版)
+# =========================
 if not firebase_admin._apps:
-    cred = credentials.Certificate(FIREBASE_PATH)
-    firebase_admin.initialize_app(cred)
+    # 1. 取得 index.py 所在的資料夾路徑 (也就是 api/)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # 2. 組合出 firebase.json 的完整路徑
+    key_path = os.path.join(current_dir, "firebase.json")
+
+    # 3. 檢查檔案是否存在再讀取
+    if os.path.exists(key_path):
+        cred = credentials.Certificate(key_path)
+        firebase_admin.initialize_app(cred)
+        print(f"✅ 本地開發模式：已讀取金鑰 {key_path}")
+    else:
+        # 如果找不到檔案，嘗試讀取環境變數 (為了 Render 上線準備)
+        # 這裡保留之前的環境變數邏輯，避免上線後壞掉
+        cred_dict = {
+            "type": "service_account",
+            "project_id": os.environ.get("FIREBASE_PROJECT_ID"),
+            "private_key_id": os.environ.get("FIREBASE_PRIVATE_KEY_ID"),
+            "private_key": os.environ.get("FIREBASE_PRIVATE_KEY", "").replace('\\n', '\n'),
+            "client_email": os.environ.get("FIREBASE_CLIENT_EMAIL"),
+            "client_id": os.environ.get("FIREBASE_CLIENT_ID"),
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+            "client_x509_cert_url": os.environ.get("FIREBASE_CLIENT_CERT_URL")
+        }
+        if cred_dict.get("project_id"):
+            cred = credentials.Certificate(cred_dict)
+            firebase_admin.initialize_app(cred)
+            print("✅ 雲端部署模式：已讀取環境變數")
+        else:
+            print("❌ 錯誤：找不到 firebase.json 且未設定環境變數")
+
 
 def verify_firebase_token(
     credentials: HTTPAuthorizationCredentials = Security(bearer)
