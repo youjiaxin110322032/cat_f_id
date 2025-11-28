@@ -1,42 +1,49 @@
 # api/index.py
 import io
 import os
-import json
+import sys
 import numpy as np
 from PIL import Image
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Header, Security
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Security
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-# 🔐 新增：FastAPI 的 API Key 工具
-from fastapi.security import APIKeyHeader, HTTPBearer, HTTPAuthorizationCredentials
+# 🔐 安全性相關引用
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import firebase_admin
+from firebase_admin import credentials, auth
+
+# =========================
+# 🧠 0. 載入辨識模組 (路徑防呆)
+# =========================
+try:
+    # 優先當成 api 套件
+    from .catfaces_demo import load_model, detect_cat_faces, face_to_feature, K, UNKNOWN_THRESHOLD
+except ImportError:
+    # 若失敗就把上層路徑加進去，再 import
+    sys.path.append("..")
+    from catfaces_demo import load_model, detect_cat_faces, face_to_feature, K, UNKNOWN_THRESHOLD
+
+app = FastAPI(title="Cat Face ID API", version="1.1")
+
+# 建立 Bearer 驗證器（給 Security 用）
 bearer = HTTPBearer(auto_error=False)
 
-import firebase_admin # Firebase Admin SDK
-from firebase_admin import credentials, auth # 用來驗證 ID Token
-
 # =========================
-# 🔥 1. Firebase 初始化 (修正路徑版)
+# 🔥 1. Firebase 初始化
 # =========================
 if not firebase_admin._apps:
-    # 1. 取得 index.py 所在的資料夾路徑 (也就是 api/)
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    
-    # 2. 組合出 firebase.json 的完整路徑
-    key_path = os.path.join(current_dir, "cat-f-id-firebase-adminsdk-fbsvc-4e7b3d9c8c.json")
+    key_path = os.path.join(current_dir, "firebase.json")
 
-    # 3. 檢查檔案是否存在再讀取
-    if os.path.exists(key_path):
-        cred = credentials.Certificate(key_path)
-        firebase_admin.initialize_app(cred)
-        print(f"✅ 本地開發模式：已讀取金鑰 {key_path}")
-    else:
-        # 如果找不到檔案，嘗試讀取環境變數 (為了 Render 上線準備)
-        # 這裡保留之前的環境變數邏輯，避免上線後壞掉
+    env_project_id = os.environ.get("FIREBASE_PROJECT_ID")
+
+    if env_project_id:
+        # ✅ 有設定環境變數（雲端部署用）
         cred_dict = {
             "type": "service_account",
-            "project_id": os.environ.get("FIREBASE_PROJECT_ID"),
+            "project_id": env_project_id,
             "private_key_id": os.environ.get("FIREBASE_PRIVATE_KEY_ID"),
             "private_key": os.environ.get("FIREBASE_PRIVATE_KEY", "").replace('\\n', '\n'),
             "client_email": os.environ.get("FIREBASE_CLIENT_EMAIL"),
@@ -44,80 +51,88 @@ if not firebase_admin._apps:
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token",
             "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-            "client_x509_cert_url": os.environ.get("FIREBASE_CLIENT_CERT_URL")
+            "client_x509_cert_url": os.environ.get("FIREBASE_CLIENT_CERT_URL"),
         }
-        if cred_dict.get("project_id"):
-            cred = credentials.Certificate(cred_dict)
-            firebase_admin.initialize_app(cred)
-            print("✅ 雲端部署模式：已讀取環境變數")
-        else:
-            print("❌ 錯誤：找不到 firebase.json 且未設定環境變數")
+        cred = credentials.Certificate(cred_dict)
+        firebase_admin.initialize_app(cred)
+        print("✅ Firebase initialized from environment variables")
+    elif os.path.exists(key_path):
+        # ✅ 沒有 env，就用本地 firebase.json
+        cred = credentials.Certificate(key_path)
+        firebase_admin.initialize_app(cred)
+        print(f"✅ Firebase initialized from file: {key_path}")
+    else:
+        # ❌ 兩邊都沒有
+        print("❌ Firebase init failed: no env vars and no firebase.json")
 
-
+# =========================
+# 🔐 Firebase Token 驗證
+# =========================
 def verify_firebase_token(
-    credentials: HTTPAuthorizationCredentials = Security(bearer)
+    credentials: HTTPAuthorizationCredentials = Security(bearer),
 ):
     if not credentials:
-        raise HTTPException(401, "Missing Bearer Token")
+        raise HTTPException(status_code=401, detail="Missing Bearer Token")
 
     token = credentials.credentials
-
     try:
         decoded = auth.verify_id_token(token)
         print("✅ Auth OK:", decoded.get("email"), decoded.get("uid"))
-        return decoded   # decoded['uid'], decoded['email'] 都讀得到
-    except Exception:
+        return decoded
+    except Exception as e:
         print("❌ Auth Failed:", e)
-        raise HTTPException(401, "Invalid Firebase token")
-    
-# 你的辨識模組（確保這些檔案在 repo 根目錄，或可被 import）
-# - catfaces_demo.py
-# - cat_knn.pkl
-# - labels.json
-from .catfaces_demo import (
-    load_model,
-    detect_cat_faces,
-    face_to_feature,
-    K,
-    UNKNOWN_THRESHOLD,
-)
-
-app = FastAPI(title="Cat Face ID API", version="1.1")
+        raise HTTPException(status_code=401, detail="Invalid Firebase token")
 
 # =========================
-# 🔐 Secure API 設定區
+# 🔐 CORS / 靜態檔案
 # =========================
 
-# 從環境變數讀 API Key（例如在部署平台設定 API_KEY）
-API_KEY = os.getenv("API_KEY")  # 例如 "super-secret-key"
-API_KEY_HEADER_NAME = "x-api-key"
+API_KEY = os.getenv("API_KEY")  # 目前沒用到，但保留
 
-# CORS：把前端網域加進來
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-    "https://youjiaxin110322032.github.io",
-    "http://localhost:5500",
-],
+        "https://youjiaxin110322032.github.io",
+        "http://localhost:5500",
+        "http://127.0.0.1:8000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# === 🐾 前端靜態檔案（放在 frontend 資料夾內） ===
+# 前端靜態檔案
 if not os.path.exists("frontend"):
     os.makedirs("frontend")
 
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
-# 載入模型
+# =========================
+# 🧠 模型載入
+# =========================
 try:
     knn, id2name = load_model()
 except RuntimeError as e:
     print("[warning] load_model 失敗：", e)
     knn, id2name = None, {}
 
-comments_db = {} # {"mama": ["留言1"], "tama": ["留言2"]}
+comments_db = {}  # {"mama": [留言...], ...}
+
+# =========================
+# 🌐 路由
+# =========================
+
+@app.get("/me")
+def get_me(user = Depends(verify_firebase_token)):
+    """
+    回傳目前用 Bearer Token 驗證過的會員資訊
+    """
+    return {
+        "uid": user.get("uid"),
+        "email": user.get("email"),
+        # 若你有在 Firebase 設 displayName，也可以順便回
+        "name": user.get("name")
+    }
 
 @app.get("/")
 def root():
@@ -138,6 +153,13 @@ def labels():
         "labels": [id2name[i] for i in sorted(id2name.keys())],
     }
 
+@app.post("/camera_open") # 打開相機的紀錄
+def camera_open(user = Depends(verify_firebase_token)):
+    email = user.get("email")
+    uid = user.get("uid")
+    print(f"📷 Camera opened by {email} ({uid})")
+    return {"email": email, "uid": uid}
+
 @app.post("/reload")
 def reload_model():
     global knn, id2name
@@ -147,13 +169,12 @@ def reload_model():
 @app.post("/predict")
 async def predict(
     file: UploadFile = File(...),
-    user = Depends(verify_firebase_token),  # 這裡其實是 decoded token
+    user = Depends(verify_firebase_token),  # decoded Firebase token
 ):
     if knn is None:
         raise HTTPException(status_code=503, detail="Model not loaded on server.")
     try:
         raw = await file.read()
-        # 讀圖（RGB）→ Numpy → BGR（給 OpenCV 流程使用）
         img = Image.open(io.BytesIO(raw)).convert("RGB")
         img = np.array(img)[:, :, ::-1]  # RGB -> BGR
 
@@ -180,11 +201,17 @@ async def predict(
                 "proba": proba,
             })
 
-        return {"width": W, "height": H, "boxes": boxes}
+        return {
+        "user": {
+            "uid": user.get("uid"),
+            "email": user.get("email"),
+        },
+        "width": W,
+        "height": H,
+        "boxes": boxes,
+        }
     except Exception as e:
-        # 返回 400 或 500 視需求調整，這裡回傳 400 並帶上錯誤訊息
         raise HTTPException(status_code=400, detail=str(e))
-
 
 @app.get("/comments")
 def get_comments(cat_name: str):
@@ -194,22 +221,21 @@ def get_comments(cat_name: str):
 def post_comment(
     cat_name: str,
     payload: dict,
-    user = Depends(verify_firebase_token),  
+    user = Depends(verify_firebase_token),
 ):
     text = payload.get("text", "").strip()
 
     if not text:
         raise HTTPException(status_code=400, detail="Empty comment")
-    
-    # 從 token 拿 email/uid，組留言作者
+
     author = user.get("email") or user.get("uid") or "匿名貓奴"
 
     if cat_name not in comments_db:
         comments_db[cat_name] = []
-    
+
     comments_db[cat_name].append({
         "text": text,
         "author": author,
     })
-        
+
     return {"cat": cat_name, "comments": comments_db[cat_name]}

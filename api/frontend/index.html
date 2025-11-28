@@ -229,6 +229,8 @@
   //const API_URL = 'https://cat-f-id.onrender.com/predict';
   // 本機測試用
   const API_URL = 'http://127.0.0.1:8000/predict';
+  const API_BASE = API_URL.replace('/predict', '');  // => "http://127.0.0.1:8000"
+
 
   // 🔐 給後端驗證用的 API Key（要跟後端環境變數 API_KEY 一樣）
   // ⚠️ 放前端只是「低強度防護」，不能保密金鑰，只適合 demo 或免費資源
@@ -408,6 +410,34 @@ document.getElementById('api-url').textContent = API_URL;
 
   async function startCamera() {
     try {
+      const user = auth.currentUser;
+    if (!user) {
+      alert("請先登入才能啟動相機！");
+      return;
+    }
+
+    // 取得 ID Token
+    const token = await user.getIdToken();
+
+    // 呼叫後端 /me，讓後端記錄是誰開相機
+    try {
+      const res = await fetch(`${API_BASE}/camera_open`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (meRes.ok) {
+        const me = await res.json();
+        console.log("後端認證的開啟者：", me.email, me.uid);
+        // 如果想顯示在畫面上也可以：
+        // setStatus(`相機啟動成功，使用者：${me.email}`);
+      } else {
+        console.warn("呼叫 /me 失敗，HTTP", meRes.status);
+      }
+    } catch (e) {
+      console.warn("呼叫 /me 發生錯誤：", e);
+    }
+
+    // ✅ 然後再啟動相機
       if (currentStream) currentStream.getTracks().forEach(t => t.stop());
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       video.srcObject = stream;
@@ -444,9 +474,7 @@ document.getElementById('api-url').textContent = API_URL;
 
     const fd = new FormData();
     fd.append('file', imageBlob, 'shot.jpg');
-  const res = await fetch('https://cat-f-id.onrender.com/me', {
-  headers: { Authorization: `Bearer ${token}` }
-});
+
     const r = await fetch(API_URL, { 
       method: 'POST', 
       headers: {
