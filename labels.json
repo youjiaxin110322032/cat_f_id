@@ -1,0 +1,12 @@
+{
+  "name2id": {
+    "coco": 0,
+    "jojo": 1,
+    "mama": 2
+  },
+  "id2name": {
+    "0": "coco",
+    "1": "jojo",
+    "2": "mama"
+  }
+}
