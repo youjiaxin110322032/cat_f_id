@@ -24,7 +24,7 @@ if not firebase_admin._apps:
     current_dir = os.path.dirname(os.path.abspath(__file__))
     
     # 2. 組合出 firebase.json 的完整路徑
-    key_path = os.path.join(current_dir, "firebase.json")
+    key_path = os.path.join(current_dir, "cat-f-id-firebase-adminsdk-fbsvc-4e7b3d9c8c.json")
 
     # 3. 檢查檔案是否存在再讀取
     if os.path.exists(key_path):
@@ -64,15 +64,17 @@ def verify_firebase_token(
 
     try:
         decoded = auth.verify_id_token(token)
+        print("✅ Auth OK:", decoded.get("email"), decoded.get("uid"))
         return decoded   # decoded['uid'], decoded['email'] 都讀得到
     except Exception:
+        print("❌ Auth Failed:", e)
         raise HTTPException(401, "Invalid Firebase token")
     
 # 你的辨識模組（確保這些檔案在 repo 根目錄，或可被 import）
 # - catfaces_demo.py
 # - cat_knn.pkl
 # - labels.json
-from catfaces_demo import (
+from .catfaces_demo import (
     load_model,
     detect_cat_faces,
     face_to_feature,

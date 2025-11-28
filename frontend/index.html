@@ -213,8 +213,22 @@
   const auth = getAuth(app);
   // 👆 Firebase 初始化結束
 
+  // 🔧 方便從 F12 console 取得 token
+  window.debugGetToken = async () => {
+    const user = auth.currentUser;
+    if (!user) {
+      console.log("尚未登入");
+      return;
+    }
+    const t = await user.getIdToken(true);
+    console.log("ID TOKEN =", t);
+    return t;
+  };
+
   // 🔐 後端的 Predict API URL（上線後換成你的正式網域）
-  const API_URL = 'https://cat-f-id.onrender.com/predict';
+  //const API_URL = 'https://cat-f-id.onrender.com/predict';
+  // 本機測試用
+  const API_URL = 'http://127.0.0.1:8000/predict';
 
   // 🔐 給後端驗證用的 API Key（要跟後端環境變數 API_KEY 一樣）
   // ⚠️ 放前端只是「低強度防護」，不能保密金鑰，只適合 demo 或免費資源
@@ -430,7 +444,9 @@ document.getElementById('api-url').textContent = API_URL;
 
     const fd = new FormData();
     fd.append('file', imageBlob, 'shot.jpg');
-
+  const res = await fetch('https://cat-f-id.onrender.com/me', {
+  headers: { Authorization: `Bearer ${token}` }
+});
     const r = await fetch(API_URL, { 
       method: 'POST', 
       headers: {

@@ -62,3 +62,8 @@ __pycache__/
 .env
 
 *venv311/
+
+# Firebase secrets (忽略所有 firebase 開頭的 json)
+firebase.json
+api/firebase.json
+*firebase-adminsdk*.json
