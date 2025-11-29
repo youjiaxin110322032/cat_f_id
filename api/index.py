@@ -19,7 +19,7 @@ from firebase_admin import credentials, auth
 # =========================
 try:
     # 優先當成 api 套件
-    from .catfaces_demo import load_model, detect_cat_faces, face_to_feature, K, UNKNOWN_THRESHOLD
+    from catfaces_demo import load_model, detect_cat_faces, face_to_feature, K, UNKNOWN_THRESHOLD
 except ImportError:
     # 若失敗就把上層路徑加進去，再 import
     sys.path.append("..")
@@ -35,7 +35,8 @@ bearer = HTTPBearer(auto_error=False)
 # =========================
 if not firebase_admin._apps:
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    key_path = os.path.join(current_dir, "firebase.json")
+    root_dir = os.path.dirname(current_dir)                  # 往上一層
+    key_path = os.path.join(root_dir, "firebase.json")       # 改成找根目錄
 
     env_project_id = os.environ.get("FIREBASE_PROJECT_ID")
 
