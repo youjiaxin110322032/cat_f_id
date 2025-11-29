@@ -3,6 +3,7 @@ import io
 import os
 import sys
 import numpy as np
+from api.index import app
 from PIL import Image
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Security
 from fastapi.middleware.cors import CORSMiddleware
