@@ -4,197 +4,100 @@
   <meta charset="utf-8" />
   <title>Cat Face ID</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Noto Sans TC", sans-serif;
-      background: #f5f5f5;
-      color: #222;
-    }
-    nav {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 16px;
-      background: #222;
-      color: #fff;
-    }
-    nav .left {
-      font-weight: 700;
-    }
-    nav .right button {
-      margin-left: 8px;
-    }
-    main {
-      padding: 16px;
-      max-width: 960px;
-      margin: 0 auto;
-    }
-    #preview {
-      width: 100%;
-      max-width: 640px;
-      background: #000;
-    }
-    #overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      pointer-events: none;
-    }
-    .video-wrapper {
-      position: relative;
-      display: inline-block;
-    }
-    #status {
-      margin-top: 8px;
-    }
-    #chat-card {
-      margin-top: 24px;
-      padding: 16px;
-      border-radius: 8px;
-      background: #fff;
-      box-shadow: 0 0 8px rgba(0,0,0,0.1);
-      display: none;
-    }
-    #chat-box {
-      height: 200px;
-      overflow-y: auto;
-      border: 1px solid #ddd;
-      padding: 8px;
-      margin-bottom: 8px;
-      background: #fafafa;
-    }
-    .msg {
-      margin-bottom: 4px;
-    }
-    .msg .role {
-      font-weight: 700;
-      margin-right: 4px;
-    }
-    #chat-input {
-      width: 100%;
-      box-sizing: border-box;
-      margin-bottom: 8px;
-    }
-    /* modal / backdrop for login / register / cat card */
-    .backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.4);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .modal {
-      background: #fff;
-      padding: 16px;
-      border-radius: 8px;
-      min-width: 280px;
-      max-width: 400px;
-    }
-    .modal h2 {
-      margin-top: 0;
-    }
-    .modal .error {
-      color: #c00;
-      margin-top: 4px;
-      font-size: 14px;
-    }
-    .hidden { display: none; }
-
-    #cat-cursor {
-      position: fixed;
-      width: 32px;
-      height: 32px;
-      pointer-events: none;
-      transform: translate(-50%, -50%);
-      transition: transform 0.1s ease-out;
-      z-index: 9999;
-    }
-  </style>
+  <!-- ✅ 用你那份 CSS -->
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <!-- 上方導覽列 -->
-  <nav>
-    <div class="left">
-      🐱 Cat Face ID
-      <span style="font-size: 12px; margin-left: 8px;">API: <span id="api-url"></span></span>
+  <!-- 上方固定 Header，配合 CSS -->
+  <header>
+    <div>
+      <h1>🐱 Cat Face ID</h1>
+      <p class="api">API：<span id="api-url"></span></p>
+      <p class="known">已知貓咪：<span id="knownCats">載入中…</span></p>
     </div>
-    <div class="right">
-      <span id="userEmail"></span>
+    <nav>
+      <p id="userEmail"></p>
       <button id="navBtnLogin">登入</button>
       <button id="navBtnRegister">註冊</button>
       <button id="navBtnLogout" style="display:none;">登出</button>
-    </div>
-  </nav>
+    </nav>
+  </header>
 
-  <main>
+  <!-- 內文包在 .wrap 裡，讓 padding / 宽度生效 -->
+  <div class="wrap">
     <!-- 相機區 -->
     <section>
-      <h2>貓臉辨識</h2>
-      <p>已知貓咪：<span id="knownCats">載入中…</span></p>
+      <h1>貓臉辨識</h1>
 
-      <div class="video-wrapper">
+      <div class="cam-box">
         <video id="preview" autoplay playsinline></video>
-        <canvas id="overlay"></canvas>
+        <canvas id="overlay" class="overlay"></canvas>
       </div>
 
-      <div style="margin-top: 8px;">
+      <div class="btns">
         <button id="btnStart">開啟相機</button>
         <button id="btnShot">拍照辨識</button>
       </div>
-      <div id="status">狀態：尚未啟動</div>
+
+      <div class="panel">
+        <div class="row">
+          <span class="tag">狀態</span>
+          <span id="status" class="small">尚未啟動</span>
+        </div>
+      </div>
     </section>
 
     <!-- 聊天室 -->
-    <section id="chat-card">
-      <h2>貓咪聊天助手</h2>
-      <div id="chat-box"></div>
+    <section id="chat-card" class="panel" style="display:none; margin-top:16px;">
+      <h1>貓咪聊天助手</h1>
+      <div id="chat-box" style="max-height:240px; overflow-y:auto;"></div>
       <textarea id="chat-input" rows="3" placeholder="輸入訊息，按 Enter 送出（Shift+Enter 換行）"></textarea>
-      <div>
+      <div class="btns" style="margin-top:8px;">
         <button id="btn-send">送出</button>
-        <button id="btn-logout">從這裡登出</button>
+        <button id="btn-logout" class="secondary">從這裡登出</button>
       </div>
     </section>
-  </main>
+  </div>
 
   <!-- Login Modal -->
   <div id="loginModal" class="backdrop hidden">
     <div class="modal">
-      <h2>登入</h2>
-      <label>Email：<br><input id="loginEmail" type="email" /></label><br><br>
-      <label>密碼：<br><input id="loginPwd" type="password" /></label>
-      <div id="loginError" class="error"></div>
-      <div style="margin-top: 8px;">
-        <button id="btnDoLogin">登入</button>
-        <button id="btnCancelLogin">取消</button>
-      </div>
-      <div style="margin-top: 8px; font-size: 14px;">
-        還沒有帳號？<button id="gotoRegister">註冊</button>
-      </div>
+      <img id="modalCloseLogin" src="/static/more_img/close.png" alt="close" />
+      <h1>登入</h1>
+      <p>Email</p>
+      <input id="loginEmail" type="email" />
+      <p style="margin-top:12px;">密碼</p>
+      <input id="loginPwd" type="password" />
+      <div id="loginError" class="error" style="margin-top:8px; color:#c00; font-size:14px;"></div>
+      <button id="btnDoLogin" class="secondary" style="margin-top:16px;">登入</button>
+      <p style="margin-top:12px; font-size:14px;">
+        還沒有帳號？
+        <button id="gotoRegister" class="secondary" style="flex:0 0 auto; padding:6px 12px;">註冊</button>
+      </p>
     </div>
   </div>
 
   <!-- Register Modal -->
   <div id="registerModal" class="backdrop hidden">
     <div class="modal">
-      <h2>註冊</h2>
-      <label>Email：<br><input id="regEmail" type="email" /></label><br><br>
-      <label>密碼：<br><input id="regPwd" type="password" /></label>
-      <div id="regError" class="error"></div>
-      <div style="margin-top: 8px;">
-        <button id="btnDoRegister">註冊</button>
-      </div>
-      <div style="margin-top: 8px; font-size: 14px;">
-        已經有帳號？<button id="gotoLogin">改成登入</button>
-      </div>
+      <img id="modalCloseRegister" src="/static/more_img/close.png" alt="close" />
+      <h1>註冊</h1>
+      <p>Email</p>
+      <input id="regEmail" type="email" />
+      <p style="margin-top:12px;">密碼</p>
+      <input id="regPwd" type="password" />
+      <div id="regError" class="error" style="margin-top:8px; color:#c00; font-size:14px;"></div>
+      <button id="btnDoRegister" class="secondary" style="margin-top:16px;">註冊</button>
+      <p style="margin-top:12px; font-size:14px;">
+        已經有帳號？
+        <button id="gotoLogin" class="secondary" style="flex:0 0 auto; padding:6px 12px;">改成登入</button>
+      </p>
     </div>
   </div>
 
-  <!-- 貓爪游標（給 JS 用） -->
-  <img id="cat-cursor" src="https://cat-f-id.onrender.com/static/more_img/cat_paw.png" alt="cursor" />
+  <!-- 貓爪游標 -->
+  <img id="cat-cursor" src="/static/more_img/cat_paw.png" alt="cursor" />
 
-  <!-- 下面整段就是你剛貼的 script，原封不動放在 body 最後 -->
   <script type="module">
     // =========================
     // 1. Firebase 初始化
@@ -221,7 +124,6 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
 
-    // 方便 debug
     window.debugGetToken = async () => {
       const user = auth.currentUser;
       if (!user) {
@@ -237,12 +139,10 @@
     // 2. 後端 API 設定
     // =========================
     const API_URL  = "https://catfaceid.onrender.com/predict";
-    const API_BASE = API_URL.replace("/predict", "");   // => https://catfaceid.onrender.com
+    const API_BASE = API_URL.replace("/predict", "");
 
-    const apiUrlEl = document.getElementById("api-url");
-    if (apiUrlEl) {
-      apiUrlEl.textContent = API_URL;
-    }
+    const apiUrlEl   = document.getElementById("api-url");
+    if (apiUrlEl) apiUrlEl.textContent = API_URL;
 
     // =========================
     // 3. 頁面元素
@@ -256,30 +156,28 @@
     const btnShot   = document.getElementById("btnShot");
     const knownCats = document.getElementById("knownCats");
 
-    // 導覽列登入/註冊/登出
     const navBtnLogin    = document.getElementById("navBtnLogin");
     const navBtnLogout   = document.getElementById("navBtnLogout");
     const navBtnRegister = document.getElementById("navBtnRegister");
     const userEmailSpan  = document.getElementById("userEmail");
 
-    // Login Modal
-    const loginModal   = document.getElementById("loginModal");
-    const loginEmail   = document.getElementById("loginEmail");
-    const loginPwd     = document.getElementById("loginPwd");
-    const btnDoLogin   = document.getElementById("btnDoLogin");
-    const btnCancelLogin = document.getElementById("btnCancelLogin");
-    const loginError   = document.getElementById("loginError");
+    const loginModal       = document.getElementById("loginModal");
+    const loginEmail       = document.getElementById("loginEmail");
+    const loginPwd         = document.getElementById("loginPwd");
+    const btnDoLogin       = document.getElementById("btnDoLogin");
+    const btnCancelLogin   = document.getElementById("btnCancelLogin");
+    const loginError       = document.getElementById("loginError");
+    const modalCloseLogin  = document.getElementById("modalCloseLogin");
 
-    // Register Modal
-    const registerModal = document.getElementById("registerModal");
-    const regEmail      = document.getElementById("regEmail");
-    const regPwd        = document.getElementById("regPwd");
-    const btnDoRegister = document.getElementById("btnDoRegister");
-    const regError      = document.getElementById("regError");
-    const gotoRegister  = document.getElementById("gotoRegister");
-    const gotoLogin     = document.getElementById("gotoLogin");
+    const registerModal      = document.getElementById("registerModal");
+    const regEmail           = document.getElementById("regEmail");
+    const regPwd             = document.getElementById("regPwd");
+    const btnDoRegister      = document.getElementById("btnDoRegister");
+    const regError           = document.getElementById("regError");
+    const gotoRegister       = document.getElementById("gotoRegister");
+    const gotoLogin          = document.getElementById("gotoLogin");
+    const modalCloseRegister = document.getElementById("modalCloseRegister");
 
-    // 聊天室
     const chatCard      = document.getElementById("chat-card");
     const chatBox       = document.getElementById("chat-box");
     const chatInput     = document.getElementById("chat-input");
@@ -291,7 +189,7 @@
     // =========================
     function setStatus(s) {
       if (!statusEl) return;
-      statusEl.textContent = "狀態：" + s;
+      statusEl.textContent = s;
     }
 
     function clearOverlay() {
@@ -304,8 +202,6 @@
       const rect = video.getBoundingClientRect();
       overlay.width  = rect.width * devicePixelRatio;
       overlay.height = rect.height * devicePixelRatio;
-      overlay.style.width  = rect.width + "px";
-      overlay.style.height = rect.height + "px";
       ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
       clearOverlay();
     }
@@ -313,21 +209,30 @@
 
     async function getFirebaseTokenOrThrow() {
       const user = auth.currentUser;
-      if (!user) {
-        throw new Error("尚未登入");
-      }
+      if (!user) throw new Error("尚未登入");
       return await user.getIdToken();
     }
 
     // =========================
-    // 5. Firebase 登入/註冊/登出
+    // 5. Firebase 登入/註冊/登出（有配合 .backdrop CSS）
     // =========================
+    function openBackdrop(el) {
+      if (!el) return;
+      el.classList.remove("hidden");
+      el.style.display = "flex";     // 讓它蓋過 .backdrop { display:none }
+    }
+    function closeBackdrop(el) {
+      if (!el) return;
+      el.classList.add("hidden");
+      el.style.display = "none";
+    }
+
     if (navBtnLogin) {
       navBtnLogin.addEventListener("click", (e) => {
         e.preventDefault();
-        if (!loginModal || !loginError) return;
-        loginModal.classList.remove("hidden");
-        loginError.textContent = "";
+        if (!loginModal) return;
+        if (loginError) loginError.textContent = "";
+        openBackdrop(loginModal);
       });
     }
 
@@ -335,44 +240,47 @@
       navBtnRegister.addEventListener("click", (e) => {
         e.preventDefault();
         if (!registerModal) return;
-        registerModal.classList.remove("hidden");
-        if (loginModal) loginModal.classList.add("hidden");
         if (regError) regError.textContent = "";
+        openBackdrop(registerModal);
       });
     }
 
     if (btnCancelLogin && loginModal) {
       btnCancelLogin.addEventListener("click", () => {
-        loginModal.classList.add("hidden");
+        closeBackdrop(loginModal);
       });
+    }
+
+    if (modalCloseLogin && loginModal) {
+      modalCloseLogin.addEventListener("click", () => closeBackdrop(loginModal));
+    }
+    if (modalCloseRegister && registerModal) {
+      modalCloseRegister.addEventListener("click", () => closeBackdrop(registerModal));
     }
 
     if (loginModal) {
       loginModal.addEventListener("click", (e) => {
-        if (e.target === loginModal) loginModal.classList.add("hidden");
+        if (e.target === loginModal) closeBackdrop(loginModal);
       });
     }
-
     if (registerModal) {
       registerModal.addEventListener("click", (e) => {
-        if (e.target === registerModal) registerModal.classList.add("hidden");
+        if (e.target === registerModal) closeBackdrop(registerModal);
       });
     }
 
     if (gotoRegister) {
       gotoRegister.addEventListener("click", () => {
-        if (!loginModal || !registerModal) return;
-        loginModal.classList.add("hidden");
-        registerModal.classList.remove("hidden");
+        closeBackdrop(loginModal);
+        openBackdrop(registerModal);
         if (regError) regError.textContent = "";
       });
     }
 
     if (gotoLogin) {
       gotoLogin.addEventListener("click", () => {
-        if (!loginModal || !registerModal) return;
-        registerModal.classList.add("hidden");
-        loginModal.classList.remove("hidden");
+        closeBackdrop(registerModal);
+        openBackdrop(loginModal);
         if (loginError) loginError.textContent = "";
       });
     }
@@ -381,7 +289,7 @@
       btnDoLogin.addEventListener("click", async () => {
         try {
           await signInWithEmailAndPassword(auth, loginEmail.value, loginPwd.value);
-          if (loginModal) loginModal.classList.add("hidden");
+          closeBackdrop(loginModal);
           loginEmail.value = "";
           loginPwd.value = "";
         } catch (e) {
@@ -394,7 +302,6 @@
       btnDoRegister.addEventListener("click", async () => {
         const email = regEmail.value;
         const password = regPwd.value;
-
         if (password.length < 6) {
           if (regError) regError.textContent = "密碼長度需至少 6 個字元";
           return;
@@ -402,7 +309,7 @@
         try {
           await createUserWithEmailAndPassword(auth, email, password);
           alert("註冊成功！已自動登入。");
-          if (registerModal) registerModal.classList.add("hidden");
+          closeBackdrop(registerModal);
           regEmail.value = "";
           regPwd.value = "";
         } catch (e) {
@@ -423,7 +330,6 @@
         alert("已登出");
       });
     }
-
     if (btnChatLogout) {
       btnChatLogout.addEventListener("click", async () => {
         await signOut(auth);
@@ -432,20 +338,17 @@
     }
 
     onAuthStateChanged(auth, (user) => {
-      if (!navBtnLogin || !navBtnRegister || !navBtnLogout || !userEmailSpan || !chatCard || !chatBox) {
-        return;
-      }
-
+      if (!navBtnLogin || !navBtnRegister || !navBtnLogout || !userEmailSpan || !chatCard || !chatBox) return;
       if (user) {
         navBtnLogin.style.display    = "none";
         navBtnRegister.style.display = "none";
-        navBtnLogout.style.display   = "inline";
+        navBtnLogout.style.display   = "inline-block";
         userEmailSpan.textContent    = user.email || "";
         chatCard.style.display       = "block";
         loadHistory();
       } else {
-        navBtnLogin.style.display    = "inline";
-        navBtnRegister.style.display = "inline";
+        navBtnLogin.style.display    = "inline-block";
+        navBtnRegister.style.display = "inline-block";
         navBtnLogout.style.display   = "none";
         userEmailSpan.textContent    = "";
         chatCard.style.display       = "none";
@@ -463,7 +366,6 @@
       try {
         const token = await getFirebaseTokenOrThrow();
 
-        // 通知後端「有人開相機」
         try {
           const res = await fetch(`${API_BASE}/camera_open`, {
             method: "POST",
@@ -535,23 +437,20 @@
     function createCatModal(catName, imgUrl = null) {
       const backdrop = document.createElement("div");
       backdrop.className = "backdrop";
-      backdrop.dataset.cat = catName;
-      backdrop.style.zIndex = 1000 + document.querySelectorAll(".backdrop").length;
+      backdrop.style.display = "flex";
 
       backdrop.innerHTML = `
         <div class="modal">
-          <div style="text-align:right;">
-            <button class="modalClose">關閉</button>
-          </div>
+          <img id="modalClose" src="${STATIC_BASE}/more_img/close.png" alt="close" />
           <div class="catresume">
-            <img src="${imgUrl || catImages[catName] || `${STATIC_BASE}/more_img/unknown_cat.png`}" style="max-width:120px;">
+            <img src="${imgUrl || catImages[catName] || `${STATIC_BASE}/more_img/unknown_cat.png`}" class="img01">
             <div>
               <div class="modalNames">
                 <span class="chip">${catName}</span>
               </div>
               <div class="comment-box">
                 <input type="text" class="commentInput" placeholder="匿名留言..." />
-                <button class="commentBtn">發布</button>
+                <button class="botton02 commentBtn">發布</button>
               </div>
               <div class="comment-list"></div>
             </div>
@@ -561,7 +460,7 @@
 
       document.body.appendChild(backdrop);
 
-      const closeBtn    = backdrop.querySelector(".modalClose");
+      const closeBtn    = backdrop.querySelector("#modalClose");
       const commentInput = backdrop.querySelector(".commentInput");
       const commentBtn   = backdrop.querySelector(".commentBtn");
       const commentList  = backdrop.querySelector(".comment-list");
@@ -574,8 +473,13 @@
       function renderComments(comments) {
         if (!commentList) return;
         commentList.innerHTML = comments.map(c => {
-          if (typeof c === "string") return `<div class="comment">${c}</div>`;
-          return `<div class="comment"><strong>${c.author || "匿名"}:</strong> ${c.text}</div>`;
+          if (typeof c === "string") {
+            return `<div class="comment-ms"><p>${c}</p></div>`;
+          }
+          return `<div class="comment-ms">
+                    <p><strong>${c.author || "匿名"}</strong></p>
+                    <p>${c.text}</p>
+                  </div>`;
         }).join("");
       }
 
@@ -599,7 +503,6 @@
         commentBtn.addEventListener("click", async () => {
           const text = commentInput.value.trim();
           if (!text) return;
-
           try {
             const token = await getFirebaseTokenOrThrow();
             const res = await fetch(`${API_BASE}/comment?cat_name=${encodeURIComponent(catName)}`, {
@@ -659,7 +562,7 @@
     if (btnShot)  btnShot.addEventListener("click", captureAndSend);
 
     // =========================
-    // 8. 聊天室：用 Firebase Token call /chat
+    // 8. 聊天室
     // =========================
     function appendMessage(role, text) {
       if (!chatBox) return;
@@ -679,9 +582,7 @@
         if (!res.ok) return;
         const data = await res.json();
         chatBox.innerHTML = "";
-        for (const m of data) {
-          appendMessage(m.role, m.content);
-        }
+        for (const m of data) appendMessage(m.role, m.content);
         chatBox.scrollTop = chatBox.scrollHeight;
       } catch (e) {
         console.warn("載入歷史失敗：", e);
@@ -695,7 +596,6 @@
       chatInput.value = "";
       appendMessage("user", text);
       btnSend.disabled = true;
-
       try {
         const token = await getFirebaseTokenOrThrow();
         const res = await fetch(`${API_BASE}/chat`, {
@@ -707,24 +607,20 @@
           body: JSON.stringify({ message: text })
         });
         btnSend.disabled = false;
-
         if (!res.ok) {
           appendMessage("assistant", "（後端錯誤：" + res.status + "）");
           return;
         }
-
         const data = await res.json();
         appendMessage("assistant", data.reply);
-        if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+        chatBox.scrollTop = chatBox.scrollHeight;
       } catch (e) {
         btnSend.disabled = false;
         appendMessage("assistant", "（送出失敗：" + e.message + "）");
       }
     }
 
-    if (btnSend) {
-      btnSend.addEventListener("click", sendMessage);
-    }
+    if (btnSend) btnSend.addEventListener("click", sendMessage);
     if (chatInput) {
       chatInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
@@ -744,7 +640,7 @@
         catCursor.style.top  = `${e.clientY}px`;
       });
       document.addEventListener("click", () => {
-        catCursor.style.transform = "scale(0.8)";
+        catCursor.style.transform = "scale(0.9)";
         setTimeout(() => catCursor.style.transform = "scale(1)", 100);
       });
     }
