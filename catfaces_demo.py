@@ -12,11 +12,27 @@ from sklearn.metrics import confusion_matrix, classification_report
 # -----------------------
 # 可調參數（簡化版本）
 # -----------------------
-UNKNOWN_THRESHOLD = 0.0  # 建議先 0.55~0.65，之後再依資料微調
+UNKNOWN_THRESHOLD = 0.55  # 建議先 0.55~0.65，之後再依資料微調
+
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(BASE_DIR, "cats")
-MODEL_PATH = os.path.join(BASE_DIR, "cat_knn.pkl")
-LABELS_PATH = os.path.join(BASE_DIR, "labels.json")
+
+# 如果這支檔案在 api/ 裡，就把「上一層」當作專案根目錄
+if os.path.basename(BASE_DIR) == "api":
+    PROJECT_ROOT = os.path.dirname(BASE_DIR)
+else:
+    PROJECT_ROOT = BASE_DIR
+
+DATA_DIR = os.path.join(PROJECT_ROOT, "cats")
+MODEL_PATH = os.path.join(PROJECT_ROOT, "cat_knn.pkl")
+LABELS_PATH = os.path.join(PROJECT_ROOT, "labels.json")
+
+print("[path debug] BASE_DIR    =", BASE_DIR)
+print("[path debug] PROJECT_ROOT =", PROJECT_ROOT)
+print("[path debug] MODEL_PATH   =", MODEL_PATH)
+print("[path debug] LABELS_PATH  =", LABELS_PATH)
+
+
 FACE_SIZE = (128, 128)            # 取樣尺寸
 K = 5  # 先試 5 或 7
 knn = KNeighborsClassifier(n_neighbors=K, metric="cosine", algorithm="brute")
@@ -229,9 +245,11 @@ def predict_image(img_path, show=True):
     faces = detect_cat_faces(img)
     if len(faces) == 0:
         print("沒有偵測到貓臉。")
-        if show:
-            cv2.imshow("cat", img); cv2.waitKey(0)
+        # 不再用 imshow，直接結束
         return
+    
+    name = "Unknown"
+    proba = 0.0
 
     for (x, y, w, h) in faces:
         feat = face_to_feature(img, (x, y, w, h)).reshape(1, -1)
@@ -255,6 +273,12 @@ def predict_image(img_path, show=True):
         out = img.copy()
         tag = name.replace(" ", "_")
         cv2.imwrite(os.path.join("logs_miscls", f"{tag}_{proba:.2f}.jpg"), out)
+
+    # 👇 新增：結果存成檔案
+    out_path = os.path.join(PROJECT_ROOT, "predict_output.jpg")
+    cv2.imwrite(out_path, img)
+    print("預測完成。")
+    print(f"👉 已將結果輸出到：{out_path}")
 
 def webcam():
     knn, id2name = load_model()
@@ -358,7 +382,7 @@ def main():
         if len(sys.argv) < 3:
             print(f"請提供圖片路徑，例如：python {prog} predict test.jpg")
             sys.exit(1)
-        predict_image(sys.argv[2], show=True)
+        predict_image(sys.argv[2], show=False)
     elif cmd == "webcam":
         webcam()
     else:

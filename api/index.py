@@ -22,9 +22,11 @@ try:
     # 優先當成 api 套件
     from catfaces_demo import load_model, detect_cat_faces, face_to_feature, K, UNKNOWN_THRESHOLD
 except ImportError:
-    # 若失敗就把上層路徑加進去，再 import
-    sys.path.append("..")
-    from catfaces_demo import load_model, detect_cat_faces, face_to_feature, K, UNKNOWN_THRESHOLD
+    try:
+        from catfaces_demo import load_model, detect_cat_faces, face_to_feature, K, UNKNOWN_THRESHOLD
+    except ImportError:
+        sys.path.append("..")
+        from catfaces_demo import load_model, detect_cat_faces, face_to_feature, K, UNKNOWN_THRESHOLD
 
 app = FastAPI(title="Cat Face ID API", version="1.1")
 
@@ -36,8 +38,7 @@ bearer = HTTPBearer(auto_error=False)
 # =========================
 if not firebase_admin._apps:
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    root_dir = os.path.dirname(current_dir)                  # 往上一層
-    key_path = os.path.join(root_dir, "firebase.json")       # 改成找根目錄
+    key_path = os.path.join(current_dir, "firebase.json")       # 改成找根目錄
 
     env_project_id = os.environ.get("FIREBASE_PROJECT_ID")
 
@@ -103,11 +104,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 自動尋找 frontend 資料夾
+static_path = "frontend"
 # 前端靜態檔案
-if not os.path.exists("frontend"):
-    os.makedirs("frontend")
+if not os.path.exists("static_path"):
+    static_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend")
 
-app.mount("/static", StaticFiles(directory="frontend"), name="static")
+if os.path.exists(static_path):
+    app.mount("/static", StaticFiles(directory=static_path), name="static")
+else:
+    print("⚠️ Warning: 'frontend' folder not found.")
 
 # =========================
 # 🧠 模型載入
@@ -163,10 +169,10 @@ def camera_open(user = Depends(verify_firebase_token)):
     return {"email": email, "uid": uid}
 
 @app.post("/reload")
-def reload_model():
+def reload_model(user: dict = Depends(verify_firebase_token)):
     global knn, id2name
     knn, id2name = load_model()
-    return {"reloaded": True}
+    return {"reloaded": True, "by_user": user.get("email")}
 
 @app.post("/predict")
 async def predict(
@@ -234,6 +240,8 @@ def post_comment(
 
     if cat_name not in comments_db:
         comments_db[cat_name] = []
+   
+    author = user.get("email", "Unknown").split("@")[0]
 
     comments_db[cat_name].append({
         "text": text,
