@@ -34,7 +34,7 @@ bearer = HTTPBearer(auto_error=False)
 # 專案根目錄 / api 目錄
 API_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(API_DIR)
-
+key_path = os.path.join(PROJECT_ROOT, "firebase.json")
 # =========================
 # 🔥 1. Firebase 初始化
 # =========================
