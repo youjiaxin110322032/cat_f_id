@@ -37,20 +37,14 @@ Thumbs.db
 logs/
 
 # === 模型與資料 ===
-#*.pkl
 #*.joblib
 *.npy
 *.npz
 *.h5
 *.ckpt
 *.pth
-#cat_knn.pkl
-#labels.json
 
 # === 測試或暫存影像 ===
-#*.jpg
-#*.jpeg
-#*.png
 *.gif
 uploads/
 tmp/
