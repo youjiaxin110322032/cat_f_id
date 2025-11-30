@@ -270,7 +270,7 @@ async def chat(
     try:
         assistant_reply = data["choices"][0]["message"]["content"]
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"LLM 回傳格式異常: {str(e)}")
+        raise HTTPException(Fstatus_code=500, detail=f"LLM 回傳格式異常: {str(e)}")
 
     # 5. 把助理回覆追加到歷史
     history.append(
@@ -281,11 +281,21 @@ async def chat(
         )
     )
 
+    LLM_ENDPOINT = os.getenv("LLM_ENDPOINT")
+
+    if LLM_ENDPOINT.endswith("/v1"):
+        LLM_ENDPOINT += "/chat/completions"
+    elif LLM_ENDPOINT.endswith("/v1/"):
+        LLM_ENDPOINT += "chat/completions"
+    print(f"💬 LLM 回覆給 {uid}: {assistant_reply}"
+          f" (via {LLM_ENDPOINT})")
+    
     # 6. 回傳給前端
     return {
         "reply": assistant_reply,
         "history_len": len(history),
     }
+
 
 
 @app.get("/history")
