@@ -247,7 +247,7 @@ async def chat(
     # 4. 呼叫 LLM API
     headers = {
         "Authorization": f"Bearer {LLM_API_KEY}",
-        "Content-Type": "application/json",
+        "Content-Type": "aKpplication/json",
     }
     payload = {
         "model": LLM_MODEL,
@@ -270,7 +270,7 @@ async def chat(
     try:
         assistant_reply = data["choices"][0]["message"]["content"]
     except Exception as e:
-        raise HTTPException(Fstatus_code=500, detail=f"LLM 回傳格式異常: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"LLM 回傳格式異常: {str(e)}")
 
     # 5. 把助理回覆追加到歷史
     history.append(
@@ -280,8 +280,6 @@ async def chat(
             timestamp=datetime.utcnow(),
         )
     )
-
-    LLM_ENDPOINT = os.getenv("LLM_ENDPOINT")
 
     if LLM_ENDPOINT.endswith("/v1"):
         LLM_ENDPOINT += "/chat/completions"
