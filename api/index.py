@@ -1,8 +1,13 @@
 # api/index.py
 import io
 import os
+from typing import Dict, List
 import sys
 import numpy as np
+import httpx
+
+from datetime import datetime
+from typing import Dict, List
 from PIL import Image
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Security
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,9 +15,38 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 # 🔐 安全性相關引用
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
 import firebase_admin
 from firebase_admin import credentials, auth
+from dotenv import load_dotenv
+
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from .models import ChatRequest, ChatMessage
+
+load_dotenv()
+
+LLM_API_KEY = os.getenv("LLM_API_KEY")
+LLM_ENDPOINT = os.getenv("LLM_ENDPOINT")
+LLM_MODEL = os.getenv("LLM_MODEL", "deepseek-chat")  # 預設 deepseek-chat
+
+# 🌟 檢查環境變數是否存在
+if not LLM_API_KEY:
+    raise RuntimeError("❌ LLM_API_KEY 未設定，請在 .env 裡加入你的 API Key")
+
+if not LLM_ENDPOINT:
+    raise RuntimeError(
+        "❌ LLM_ENDPOINT 未設定。\n"
+        "例如 DeepSeek:\n"
+        "LLM_ENDPOINT=https://api.deepseek.com/v1/chat/completions\n"
+        "或 OpenAI:\n"
+        "LLM_ENDPOINT=https://api.openai.com/v1/chat/completions"
+    )
+
+# 印出設定方便 debug（正式環境建議關掉）
+print("🔧 LLM 設定：")
+print(" - MODEL    =", LLM_MODEL)
+print(" - ENDPOINT =", LLM_ENDPOINT)
+print(" - KEY 前 6 =", LLM_API_KEY[:6], "...")
 
 # =========================
 # 🧠 0. 載入辨識模組 (路徑防呆)
@@ -26,7 +60,10 @@ except ImportError:
         sys.path.append(ROOT_DIR)
     from catfaces_demo import load_model, detect_cat_faces, face_to_feature, K, UNKNOWN_THRESHOLD
 
-app = FastAPI(title="Cat Face ID API", version="1.1")
+app = FastAPI(title="Cat Face LLM Chat", version="1.1")
+
+# 每個 user 的聊天歷史：username -> List[ChatMessage]
+user_history: Dict[str, List[ChatMessage]] = {}
 
 # 建立 Bearer 驗證器（給 Security 用）
 bearer = HTTPBearer(auto_error=False)
@@ -92,8 +129,6 @@ def verify_firebase_token(
 # 🔐 CORS / 靜態檔案
 # =========================
 
-API_KEY = os.getenv("API_KEY")  # 目前沒用到，但保留
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -153,6 +188,122 @@ def labels():
         "count": len(id2name),
         "labels": [id2name[i] for i in sorted(id2name.keys())],
     }
+
+@app.post("/chat")
+async def chat(
+    req: ChatRequest,
+    user = Depends(verify_firebase_token),
+):
+    """
+    使用 DeepSeek / OpenAI 風格的 chat.completions API，
+    - 維持每個使用者獨立歷史（存在記憶體 user_history）
+    - 加上 system prompt（貓咪助手）
+    - 做簡單長度限制避免爆 token
+    """
+    uid = user.get("uid") or user.get("email")
+    if not uid:
+        raise HTTPException(status_code=400, detail="No uid or email in token")
+
+    # 1. 把這次 user 訊息先寫進歷史
+    history = user_history.setdefault(uid, [])
+    history.append(
+        ChatMessage(
+            role="user",
+            content=req.message,
+            timestamp=datetime.utcnow(),
+        )
+    )
+
+    # 2. 取最近 10 則對話，防止無限變長
+    last_messages = history[-10:]
+
+    # 簡單的內容長度限制（防止單句太長炸 token）
+    def truncate(text: str, max_len: int = 1000) -> str:
+        text = text or ""
+        if len(text) <= max_len:
+            return text
+        return text[-max_len:]  # 保留尾端內容即可
+
+    # 3. DeepSeek / OpenAI 標準 messages 格式，加入 system prompt
+    messages_payload = [
+        {
+            "role": "system",
+            "content": (
+                "你是一隻活潑但專業的貓咪識別與陪聊助手，"
+                "說話可以可愛一點，但重點要清楚、具體，"
+                "使用繁體中文回答。"
+            ),
+        }
+    ]
+    for m in last_messages:
+        # m.role 是 "user" 或 "assistant"（你的 ChatMessage 模型）
+        messages_payload.append(
+            {
+                "role": m.role,
+                "content": truncate(m.content),
+            }
+        )
+
+    # 4. 呼叫 LLM API
+    headers = {
+        "Authorization": f"Bearer {LLM_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": LLM_MODEL,
+        "messages": messages_payload,
+        # 以下是常見參數，可依你喜好調整
+        "temperature": 0.7,
+        "max_tokens": 512,
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            r = await client.post(LLM_ENDPOINT, headers=headers, json=payload)
+            r.raise_for_status()
+            data = r.json()
+    except httpx.HTTPError as e:
+        # 直接回傳 502 給前端，比起 500 更像「下游服務掛了」
+        raise HTTPException(status_code=502, detail=f"LLM 呼叫失敗: {str(e)}")
+
+    # DeepSeek / OpenAI 相同結構：choices[0].message.content
+    try:
+        assistant_reply = data["choices"][0]["message"]["content"]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"LLM 回傳格式異常: {str(e)}")
+
+    # 5. 把助理回覆追加到歷史
+    history.append(
+        ChatMessage(
+            role="assistant",
+            content=assistant_reply,
+            timestamp=datetime.utcnow(),
+        )
+    )
+
+    # 6. 回傳給前端
+    return {
+        "reply": assistant_reply,
+        "history_len": len(history),
+    }
+
+
+@app.get("/history")
+def get_history(user = Depends(verify_firebase_token)):
+    uid = user.get("uid") or user.get("email")
+    if not uid:
+        raise HTTPException(status_code=400, detail="No uid or email in token")
+
+    history = user_history.get(uid, [])
+    return [
+        {
+            "role": m.role,
+            "content": m.content,
+            "timestamp": m.timestamp.isoformat(),
+        }
+        for m in history
+    ]
+
 
 @app.post("/camera_open")
 def camera_open(user = Depends(verify_firebase_token)):
