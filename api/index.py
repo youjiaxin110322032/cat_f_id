@@ -3,7 +3,6 @@ import io
 import os
 import sys
 import numpy as np
-from api.index import app
 from PIL import Image
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Security
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,26 +18,29 @@ from firebase_admin import credentials, auth
 # 🧠 0. 載入辨識模組 (路徑防呆)
 # =========================
 try:
-    # 優先當成 api 套件
     from catfaces_demo import load_model, detect_cat_faces, face_to_feature, K, UNKNOWN_THRESHOLD
 except ImportError:
-    try:
-        from catfaces_demo import load_model, detect_cat_faces, face_to_feature, K, UNKNOWN_THRESHOLD
-    except ImportError:
-        sys.path.append("..")
-        from catfaces_demo import load_model, detect_cat_faces, face_to_feature, K, UNKNOWN_THRESHOLD
+    # 若 Python 沒把專案根目錄放進 sys.path，就手動補一層
+    ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if ROOT_DIR not in sys.path:
+        sys.path.append(ROOT_DIR)
+    from catfaces_demo import load_model, detect_cat_faces, face_to_feature, K, UNKNOWN_THRESHOLD
 
 app = FastAPI(title="Cat Face ID API", version="1.1")
 
 # 建立 Bearer 驗證器（給 Security 用）
 bearer = HTTPBearer(auto_error=False)
 
+# 專案根目錄 / api 目錄
+API_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(API_DIR)
+
 # =========================
 # 🔥 1. Firebase 初始化
 # =========================
 if not firebase_admin._apps:
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    key_path = os.path.join(current_dir, "firebase.json")       # 改成找根目錄
+    # firebase.json 放在「專案根目錄」
+    key_path = os.path.join(PROJECT_ROOT, "firebase.json")
 
     env_project_id = os.environ.get("FIREBASE_PROJECT_ID")
 
@@ -104,16 +106,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 自動尋找 frontend 資料夾
-static_path = "frontend"
-# 前端靜態檔案
-if not os.path.exists("static_path"):
-    static_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend")
-
+# 前端靜態檔案（frontend 在專案根目錄）
+static_path = os.path.join(PROJECT_ROOT, "frontend")
 if os.path.exists(static_path):
     app.mount("/static", StaticFiles(directory=static_path), name="static")
 else:
-    print("⚠️ Warning: 'frontend' folder not found.")
+    print(f"⚠️ Warning: 'frontend' folder not found at {static_path}")
 
 # =========================
 # 🧠 模型載入
@@ -132,19 +130,15 @@ comments_db = {}  # {"mama": [留言...], ...}
 
 @app.get("/me")
 def get_me(user = Depends(verify_firebase_token)):
-    """
-    回傳目前用 Bearer Token 驗證過的會員資訊
-    """
     return {
         "uid": user.get("uid"),
         "email": user.get("email"),
-        # 若你有在 Firebase 設 displayName，也可以順便回
-        "name": user.get("name")
+        "name": user.get("name"),
     }
 
 @app.get("/")
 def root():
-    index_path = os.path.join("frontend", "index.html")
+    index_path = os.path.join(PROJECT_ROOT, "frontend", "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
     return {"detail": "frontend/index.html not found"}
@@ -155,13 +149,12 @@ def ping():
 
 @app.get("/labels")
 def labels():
-    """檢查目前模型的已知貓名"""
     return {
         "count": len(id2name),
         "labels": [id2name[i] for i in sorted(id2name.keys())],
     }
 
-@app.post("/camera_open") # 打開相機的紀錄
+@app.post("/camera_open")
 def camera_open(user = Depends(verify_firebase_token)):
     email = user.get("email")
     uid = user.get("uid")
@@ -177,7 +170,7 @@ def reload_model(user: dict = Depends(verify_firebase_token)):
 @app.post("/predict")
 async def predict(
     file: UploadFile = File(...),
-    user = Depends(verify_firebase_token),  # decoded Firebase token
+    user = Depends(verify_firebase_token),
 ):
     if knn is None:
         raise HTTPException(status_code=503, detail="Model not loaded on server.")
@@ -210,13 +203,13 @@ async def predict(
             })
 
         return {
-        "user": {
-            "uid": user.get("uid"),
-            "email": user.get("email"),
-        },
-        "width": W,
-        "height": H,
-        "boxes": boxes,
+            "user": {
+                "uid": user.get("uid"),
+                "email": user.get("email"),
+            },
+            "width": W,
+            "height": H,
+            "boxes": boxes,
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -232,16 +225,12 @@ def post_comment(
     user = Depends(verify_firebase_token),
 ):
     text = payload.get("text", "").strip()
-
     if not text:
         raise HTTPException(status_code=400, detail="Empty comment")
 
-    author = user.get("email") or user.get("uid") or "匿名貓奴"
-
+    author = user.get("email", "Unknown").split("@")[0]
     if cat_name not in comments_db:
         comments_db[cat_name] = []
-   
-    author = user.get("email", "Unknown").split("@")[0]
 
     comments_db[cat_name].append({
         "text": text,

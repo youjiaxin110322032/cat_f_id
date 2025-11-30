@@ -263,9 +263,11 @@ def predict_image(img_path, show=True):
         cv2.rectangle(img, (x, y), (x+w, y+h), color, 2)
         cv2.putText(img, f"{name} ({proba:.2f})", (x, y-8),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2, cv2.LINE_AA)
-    if show:
-        cv2.imshow("predict", img); cv2.waitKey(0)
-    print("預測完成。")
+        
+    # 不再用 imshow，直接存檔
+    out_path = os.path.join(PROJECT_ROOT, "predict_output.jpg")
+    cv2.imwrite(out_path, img)
+    print(f"預測完成，已將結果輸出到：{out_path}")
 
     # 記錄低信心或誤判樣本，方便回顧
     if name == "Unknown" or proba < 0.6:
@@ -273,12 +275,6 @@ def predict_image(img_path, show=True):
         out = img.copy()
         tag = name.replace(" ", "_")
         cv2.imwrite(os.path.join("logs_miscls", f"{tag}_{proba:.2f}.jpg"), out)
-
-    # 👇 新增：結果存成檔案
-    out_path = os.path.join(PROJECT_ROOT, "predict_output.jpg")
-    cv2.imwrite(out_path, img)
-    print("預測完成。")
-    print(f"👉 已將結果輸出到：{out_path}")
 
 def webcam():
     knn, id2name = load_model()
