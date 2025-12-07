@@ -141,25 +141,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# =========================
-# 📂 靜態檔案路徑修正 (Vercel 專用)
-# =========================
-# 取得 index.py 所在的資料夾 (即 api/)
-current_dir = os.path.dirname(os.path.abspath(__file__))
-# 往上一層取得專案根目錄
-root_dir = os.path.dirname(current_dir)
-# 組合出 frontend 的完整路徑
-frontend_path = os.path.join(root_dir, "frontend")
-
-# 防呆：如果上面的路徑找不到，試試看當前目錄 (本地開發用)
-if not os.path.exists(frontend_path):
-    frontend_path = "frontend"
-
-if os.path.exists(frontend_path):
-    app.mount("/static", StaticFiles(directory=frontend_path), name="static")
-    print(f"✅ Static files mounted from: {frontend_path}")
+# 前端靜態檔案（frontend 在專案根目錄）
+static_path = os.path.join(PROJECT_ROOT, "frontend")
+if os.path.exists(static_path):
+    app.mount("/static", StaticFiles(directory=static_path), name="static")
 else:
-    print(f"⚠️ Warning: 'frontend' folder not found at {frontend_path}")
+    print(f"⚠️ Warning: 'frontend' folder not found at {static_path}")
 
 # =========================
 # 🧠 模型載入
