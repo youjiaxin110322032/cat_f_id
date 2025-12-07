@@ -244,27 +244,48 @@ async def chat(
             }
         )
 
-    # 4. 呼叫 LLM API
+# 4. 呼叫 LLM API
+    
+    # 👇 加入這段：定義 target_url 並處理網址
+    target_url = LLM_ENDPOINT
+    
     headers = {
         "Authorization": f"Bearer {LLM_API_KEY}",
-        "Content-Type": "aKpplication/json",
+        "Content-Type": "application/json", 
     }
+    
     payload = {
         "model": LLM_MODEL,
         "messages": messages_payload,
-        # 以下是常見參數，可依你喜好調整
         "temperature": 0.7,
         "max_tokens": 512,
     }
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            r = await client.post(LLM_ENDPOINT, headers=headers, json=payload)
+            # 👇 這裡現在能找到 target_url 了
+            r = await client.post(target_url, headers=headers, json=payload)
+
+            # 👇 印出詳細錯誤文字
+            if r.status_code != 200:
+                print(f"❌ API 回傳錯誤碼: {r.status_code}")
+                print(f"❌ API 回傳內容: {r.text}")
+
             r.raise_for_status()
             data = r.json()
     except httpx.HTTPError as e:
-        # 直接回傳 502 給前端，比起 500 更像「下游服務掛了」
-        raise HTTPException(status_code=502, detail=f"LLM 呼叫失敗: {str(e)}")
+        # 這是 API 回傳 4xx 或 5xx 的情況
+        print(f"❌ API 請求失敗 (Status): {e}")
+        # 將原始錯誤回傳給前端，方便你在網頁 Console 看到
+        raise HTTPException(status_code=e.response.status_code, detail=f"API Error: {e.response.text}")
+
+    except Exception as e:
+        # 這是連線根本沒出去（例如網址錯了、斷網）
+        print(f"❌ API 連線失敗 (Connection): {e}")
+        raise HTTPException(status_code=502, detail=f"Connection Error: {str(e)}")
+    except Exception as e:
+        print(f"❌ 未知錯誤: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
     # DeepSeek / OpenAI 相同結構：choices[0].message.content
     try:
@@ -281,10 +302,6 @@ async def chat(
         )
     )
 
-    if LLM_ENDPOINT.endswith("/v1"):
-        LLM_ENDPOINT += "/chat/completions"
-    elif LLM_ENDPOINT.endswith("/v1/"):
-        LLM_ENDPOINT += "chat/completions"
     print(f"💬 LLM 回覆給 {uid}: {assistant_reply}"
           f" (via {LLM_ENDPOINT})")
     
@@ -395,5 +412,13 @@ def post_comment(
         "text": text,
         "author": author,
     })
+
+    # =========================
+    # 🚀 啟動點 (Local 開發用)
+    # =========================
+    if __name__ == "__main__":
+        import uvicorn
+        # 這樣你可以直接用 python api/index.py 執行
+        uvicorn.run("index:app", host="127.0.0.1", port=8000, reload=True)
 
     return {"cat": cat_name, "comments": comments_db[cat_name]}

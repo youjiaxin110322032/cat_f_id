@@ -11,7 +11,7 @@
   <!-- 上方固定 Header，配合 CSS -->
   <header>
     <div>
-      <h1>🐱 Cat Face ID</h1>
+      <h1>猴硐貓村觀光指南 | 貓臉辨識系統</h1>
       <p class="api">API：<span id="api-url"></span></p>
       <p class="known">已知貓咪：<span id="knownCats">載入中…</span></p>
     </div>
@@ -47,16 +47,32 @@
       </div>
     </section>
 
-    <!-- 聊天室 -->
-    <section id="chat-card" class="panel" style="display:none; margin-top:16px;">
-      <h1>貓咪聊天助手</h1>
-      <div id="chat-box" style="max-height:240px; overflow-y:auto;"></div>
-      <textarea id="chat-input" rows="3" placeholder="輸入訊息，按 Enter 送出（Shift+Enter 換行）"></textarea>
-      <div class="btns" style="margin-top:8px;">
-        <button id="btn-send">送出</button>
-        <button id="btn-logout" class="secondary">從這裡登出</button>
+
+    <button id="chat-launcher" style="display: none;">
+      🐱
+    </button>
+
+    <section id="chat-card" class="chat-window" style="display: none;">
+      <div class="chat-header">
+        <div class="title">
+            <span>AI貓咪村長</span>
+            <span id="chat-status" style="font-size:0.8em; color:#bfbfbf;">(線上)</span>
+        </div>
+        <button id="btn-close-chat" class="close-btn">×</button>
+      </div>
+
+      <div id="chat-box"></div>
+
+      <div class="chat-footer">
+        <textarea id="chat-input" rows="1" placeholder="輸入訊息..."></textarea>
+        <div class="chat-actions">
+            <button id="btn-logout" class="btn-small secondary">登出</button>
+            <button id="btn-send" class="btn-small primary">送出</button>
+        </div>
       </div>
     </section>
+
+
   </div>
 
   <!-- Login Modal -->
@@ -96,7 +112,7 @@
   </div>
 
   <!-- 貓爪游標 -->
-  <img id="cat-cursor" src="/static/more_img/cat_paw.png" alt="cursor" />
+  <img id="cat-cursor" src="/static/more_img/cat_hand.png" alt="cursor" />
 
   <script type="module">
     // =========================
@@ -183,6 +199,8 @@
     const chatInput     = document.getElementById("chat-input");
     const btnSend       = document.getElementById("btn-send");
     const btnChatLogout = document.getElementById("btn-logout");
+    const launcherBtn   = document.getElementById("chat-launcher");
+    const closeChatBtn  = document.getElementById("btn-close-chat");
 
     // =========================
     // 4. 共用小工具
@@ -232,7 +250,7 @@
         e.preventDefault();
         if (!loginModal) return;
         if (loginError) loginError.textContent = "";
-        openBackdrop(loginModal);
+        openBackdrop(loginModal); 
       });
     }
 
@@ -338,20 +356,31 @@
     }
 
     onAuthStateChanged(auth, (user) => {
-      if (!navBtnLogin || !navBtnRegister || !navBtnLogout || !userEmailSpan || !chatCard || !chatBox) return;
+      if (!navBtnLogin || !navBtnRegister || !navBtnLogout || !userEmailSpan || !chatCard || !chatBox || !launcherBtn) return;
       if (user) {
         navBtnLogin.style.display    = "none";
         navBtnRegister.style.display = "none";
         navBtnLogout.style.display   = "inline-block";
         userEmailSpan.textContent    = user.email || "";
-        chatCard.style.display       = "block";
+        
+        launcherBtn.style.display = "flex"; 
+        launcherBtn.style.opacity = "1";         // 確保按鈕可見
+        launcherBtn.style.pointerEvents = "auto"; // 確保可點擊
+        
+        chatCard.style.display = "none";         // 預設關閉視窗
+        chatCard.classList.remove("open");       // 確保沒有開啟的動畫 class
+
         loadHistory();
       } else {
         navBtnLogin.style.display    = "inline-block";
         navBtnRegister.style.display = "inline-block";
         navBtnLogout.style.display   = "none";
         userEmailSpan.textContent    = "";
+        // 全部隱藏
         chatCard.style.display       = "none";
+        chatCard.classList.remove("open");
+        launcherBtn.style.display    = "none"; // 隱藏啟動按鈕
+
         chatBox.innerHTML            = "";
       }
     });
@@ -656,6 +685,44 @@
         knownCats.textContent = "無法取得";
       }
     })();
+
+    // =========================
+    // 10. 聊天室開關動畫邏輯 (新增)
+    // =========================
+    
+    // 🟢 點擊圓形按鈕 -> 打開聊天室
+    if (launcherBtn) {
+        launcherBtn.addEventListener('click', () => {
+            // 1. 先設定 display: flex 讓元素出現在 DOM 上
+            chatCard.style.display = 'flex';
+            
+            // 2. 稍微延遲加入 class，觸發 CSS transition 動畫
+            setTimeout(() => {
+                chatCard.classList.add('open');
+            }, 10);
+            
+            // 3. 隱藏圓形按鈕 (變成透明並不可點擊，避免擋路)
+            launcherBtn.style.opacity = '0';
+            launcherBtn.style.pointerEvents = 'none';
+        });
+    }
+
+    // 🔴 點擊 X 按鈕 -> 關閉聊天室
+    if (closeChatBtn) {
+        closeChatBtn.addEventListener('click', () => {
+            // 1. 移除動畫 class，視窗會縮下去
+            chatCard.classList.remove('open');
+            
+            // 2. 恢復圓形按鈕
+            launcherBtn.style.opacity = '1';
+            launcherBtn.style.pointerEvents = 'auto';
+
+            // 3. 等 CSS 動畫跑完 (0.3s) 再真的把視窗 display: none
+            setTimeout(() => {
+                chatCard.style.display = 'none';
+            }, 300);
+        });
+    }
   </script>
 </body>
 </html>

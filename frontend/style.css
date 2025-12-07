@@ -1,7 +1,7 @@
 /*以下設定全域*/
 :root{
     --green:#6aa66a; 
-    --dark:#5E4F05; 
+    --dark:#5d3e0f; 
     --bg:#FFF8D7; 
 }
 * {
@@ -19,7 +19,7 @@ html,body{
     max-width:800px;
     margin:0 auto;
     padding:16px 16px 80px;
-    padding-top: 72px;
+    padding-top: 180px;
 }
 #cat-cursor {
     position: fixed;
@@ -52,8 +52,8 @@ header{
     flex-direction: row;
     align-items:center;
     justify-content:space-between;
-    padding: 16px 36px;
-    background-color: #5E4F05;
+    padding: 30px 36px;
+    background-color: #5d3e0f;
     position: fixed;
     width: 100%;  
     z-index: 1000; 
@@ -62,6 +62,24 @@ nav{
     display: flex;
     flex-direction: row;
     gap: 24px;
+    align-items: center; /* 確保垂直置中 */
+}
+nav button {
+    background-color: transparent; /* 背景透明 (空心) */
+    border: 2px solid #ffffff;     /* 白色線框 */
+    border-radius: 50px;           /* 橢圓形導角 */
+    color: #ffffff;                /*文字白色 */
+    font-size: 16px;               /* 字體放大 */
+    padding: 8px 24px;             /* 內距加大，讓按鈕變大顆 */
+    transition: all 0.3s ease;     /* 新增互動過渡效果 */
+    flex: unset;                   /* 取消原本通用按鈕的 flex 伸縮設定 */
+    margin-top: 0;                 /* 確保沒有多餘的上方間距 */
+}
+nav button:hover {
+    background-color: #FFF8D7; /* 背景變成淺色 */
+    color: #5d3e0f;            /* 文字變成深色 */
+    cursor: pointer;           /* 游標變成手指 */
+    transform: scale(1.05);    /* 放大一點點 */
 }
 nav p:hover{
     color: #FFF8D7;
@@ -98,13 +116,13 @@ p{
 .known{
     margin-top:6px;
     font-size:12px;
-    color:#2b5b2b;
+    color:#ffffff;
 }
 
 .cam-box{
     position:relative;
     background:#000;
-    border: 4px solid #5E4F05;
+    border: 4px solid #5d3e0f;
     border-radius:12px;
     overflow:hidden;
     aspect-ratio:16/9;
@@ -258,3 +276,170 @@ input{
 .hidden{
     display: none !important;
 }
+
+/* --- 🚀 啟動按鈕 (右下角圓球) --- */
+#chat-launcher {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: #5d3e0f;
+    color: white;
+    font-size: 30px;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    cursor: pointer;
+    z-index: 9999;
+    transition: transform 0.2s, background-color 0.2s;
+    display: flex; /* 讓 emoji 置中 */
+    align-items: center;
+    justify-content: center;
+}
+
+#chat-launcher:hover {
+    transform: scale(1.1);
+    background-color: #5d3e0f;
+}
+
+/* --- 💬 聊天視窗本體 --- */
+.chat-window {
+    position: fixed;
+    bottom: 90px; /* 在圓球上方 */
+    right: 20px;
+    width: 350px; /* 固定寬度 */
+    height: 450px; /* 固定高度 */
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 9998;
+    /* 動畫效果初始狀態 */
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+    pointer-events: none; /* 隱藏時不可點擊 */
+    transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+/* 當聊天室「開啟」時的 class */
+.chat-window.open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+/* --- 內部佈局微調 --- */
+.chat-header {
+    background-color: #5d3e0f;
+    color: white;
+    padding: 12px 16px;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+#chat-box {
+    flex: 1; /* 佔滿剩餘空間 */
+    padding: 10px;
+    background-color: #f9f9f9;
+    overflow-y: auto;
+    font-size: 14px;
+}
+
+.chat-footer {
+    padding: 10px;
+    background-color: white;
+    border-top: 1px solid #eee;
+}
+
+#chat-input {
+    width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 18px;
+    padding: 8px 12px;
+    resize: none; /* 禁止拉大 */
+    outline: none;
+    font-size: 14px;
+    box-sizing: border-box; /* 重要 */
+}
+
+.chat-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+}
+
+.btn-small {
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: none;
+    font-size: 12px;
+}
+/* =========================================
+   聊天室底部佈局修改 (輸入框 + 送出按鈕並排)
+   ========================================= */
+
+/* 1. 將 Footer 改為橫向排列 (Flex Layout) */
+.chat-footer {
+    display: flex !important;       /* 啟用 Flex */
+    flex-direction: row !important; /* 橫向排列 */
+    align-items: center;            /* 垂直置中 */
+    gap: 8px;                       /* 輸入框與按鈕的間距 */
+    padding: 10px 12px;             /* 內距微調 */
+}
+
+/* 2. 輸入框設定：佔滿剩餘空間 */
+#chat-input {
+    flex: 1;                        /* 自動填滿左側空間 */
+    width: auto !important;         /* 覆蓋原本的 100% 寬度 */
+    margin: 0 !important;           /* 移除多餘外距 */
+    height: 40px;                   /* 設定高度與按鈕一致 */
+    padding: 8px 14px;              /* 調整文字內距 */
+    border-radius: 20px;            /* 讓輸入框也圓一點，搭配橢圓按鈕 */
+}
+
+/* 3. 按鈕容器調整 */
+.chat-actions {
+    margin: 0 !important;           /* 移除原本的上方間距 */
+    display: flex;
+    align-items: center;
+}
+
+/* 4. 隱藏登出按鈕 */
+#btn-logout {
+    display: none !important;       /* 強制隱藏 */
+}
+
+/* 5. 送出按鈕樣式 (縮小、橢圓形) */
+#btn-send {
+    border-radius: 50px !important; /* 變成完全橢圓 */
+    height: 40px;                   /* 高度與輸入框一致 */
+    padding: 0 20px !important;     /* 左右內距，控制按鈕寬度 */
+    font-size: 14px;                /* 字體大小 */
+    white-space: nowrap;            /* 防止文字換行 */
+    width: auto;                    /* 寬度依文字內容自動調整 */
+    min-width: 60px;                /* 最小寬度，約佔整體的 1/6~1/8 */
+    display: flex;
+    align-items: center;            /* 文字垂直置中 */
+    justify-content: center;        /* 文字水平置中 */
+    flex: 0 0 auto;                 /* 固定大小，不被壓縮 */
+}
+.btn-small.primary { background-color: #5d3e0f; color: white; }
+.btn-small.secondary { background-color: #eee; color: #666; }
