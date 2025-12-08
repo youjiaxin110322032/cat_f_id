@@ -1,16 +1,25 @@
-fastapi==0.120.4
-uvicorn==0.38.0
-pydantic==2.12.3
-python-multipart==0.0.20
+# --- 核心框架 ---
+fastapi
+uvicorn
+pydantic
+python-multipart
 
-passlib[bcrypt]==1.7.4
-python-jose[cryptography]==3.3.0
-httpx==0.24.1
-python-dotenv==1.0.1
+# --- 影像處理與 AI (關鍵：OpenCV 必須是 headless) ---
+numpy
+pillow
+opencv-python-headless
+scikit-learn
+joblib
 
-numpy==2.2.6
-pillow==12.0.0
-opencv-python-headless==4.12.0.88
-scikit-learn==1.7.2
-joblib==1.5.2
-firebase-admin==6.6.0
+# --- Firebase 與 資料庫 ---
+firebase-admin
+libsql-client
+
+# --- 身分驗證與加密 (你的程式碼有用到 JWT 或密碼驗證的話需要這些) ---
+passlib[bcrypt]
+python-jose[cryptography]
+
+# --- 工具類 ---
+python-dotenv
+httpx
+aiohttp
