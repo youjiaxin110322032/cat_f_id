@@ -3,6 +3,6 @@
     name: cat-face-id-api
     env: python
     plan: free
-    pythonVersion: 3.12.5
-    buildCommand: pip install -r requirements.txt
+    pythonVersion: 3.11.9  # 建議改用 3.11，支援度較佳
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
     startCommand: uvicorn api.index:app --host 0.0.0.0 --port $PORT

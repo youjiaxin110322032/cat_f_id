@@ -1,25 +1,12 @@
-# --- 核心框架 ---
 fastapi
 uvicorn
-pydantic
 python-multipart
-
-# --- 影像處理與 AI (關鍵：OpenCV 必須是 headless) ---
 numpy
 pillow
+# 這裡指定版本通常能確保下載到預編譯好的檔案，速度快很多
 opencv-python-headless
 scikit-learn
 joblib
-
-# --- Firebase 與 資料庫 ---
 firebase-admin
-libsql-client
-
-# --- 身分驗證與加密 (你的程式碼有用到 JWT 或密碼驗證的話需要這些) ---
-passlib[bcrypt]
-python-jose[cryptography]
-
-# --- 工具類 ---
 python-dotenv
 httpx
-aiohttp

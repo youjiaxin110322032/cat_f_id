@@ -1,84 +1,111 @@
 # api/index.py
 import io
 import os
-from typing import Dict, List
 import sys
 import numpy as np
 import httpx
-
 from datetime import datetime
 from typing import Dict, List
 from PIL import Image
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Security
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-
-# 🔐 安全性相關引用
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 import firebase_admin
 from firebase_admin import credentials, auth
 from dotenv import load_dotenv
 
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from .models import ChatRequest, ChatMessage
+# -----------------------------------------------------------
+# 1. 路徑與環境設定
+# -----------------------------------------------------------
 
+# 強制將專案根目錄加入 Python 搜尋路徑 (解決找不到模組問題)
+current_dir = os.path.dirname(os.path.abspath(__file__)) # api 資料夾
+root_dir = os.path.dirname(current_dir) # 專案根目錄
+if root_dir not in sys.path:
+    sys.path.append(root_dir)
+
+# 載入 .env
 load_dotenv()
 
-LLM_API_KEY = os.getenv("LLM_API_KEY")
-LLM_ENDPOINT = os.getenv("LLM_ENDPOINT")
-LLM_MODEL = os.getenv("LLM_MODEL", "deepseek-chat")  # 預設 deepseek-chat
+# 嘗試載入本地模組 (Models)
+try:
+    from .models import ChatRequest, ChatMessage
+except ImportError:
+    # 本地直接執行時可能需要這行
+    from models import ChatRequest, ChatMessage
 
-# 🌟 檢查環境變數是否存在
-if not LLM_API_KEY:
-    raise RuntimeError("❌ LLM_API_KEY 未設定，請在 .env 裡加入你的 API Key")
-
-if not LLM_ENDPOINT:
-    raise RuntimeError(
-        "❌ LLM_ENDPOINT 未設定。\n"
-        "例如 DeepSeek:\n"
-        "LLM_ENDPOINT=https://api.deepseek.com/v1/chat/completions\n"
-        "或 OpenAI:\n"
-        "LLM_ENDPOINT=https://api.openai.com/v1/chat/completions"
-    )
-
-# 印出設定方便 debug（正式環境建議關掉）
-print("🔧 LLM 設定：")
-print(" - MODEL    =", LLM_MODEL)
-print(" - ENDPOINT =", LLM_ENDPOINT)
-print(" - KEY 前 6 =", LLM_API_KEY[:6], "...")
-
-# =========================
-# 🧠 0. 載入辨識模組 (路徑防呆)
-# =========================
+# -----------------------------------------------------------
+# 2. 載入辨識模組 (放在最上方以免找不到)
+# -----------------------------------------------------------
 try:
     from catfaces_demo import load_model, detect_cat_faces, face_to_feature, K, UNKNOWN_THRESHOLD
 except ImportError:
-    # 若 Python 沒把專案根目錄放進 sys.path，就手動補一層
-    ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    if ROOT_DIR not in sys.path:
-        sys.path.append(ROOT_DIR)
+    # 再次確保路徑正確 (雖然後面 sys.path 加過了，防呆用)
+    if root_dir not in sys.path:
+        sys.path.append(root_dir)
     from catfaces_demo import load_model, detect_cat_faces, face_to_feature, K, UNKNOWN_THRESHOLD
 
-app = FastAPI(title="Cat Face LLM Chat", version="1.1")
+# -----------------------------------------------------------
+# 3. 全域變數與生命週期 (Lifespan)
+# -----------------------------------------------------------
 
-# 每個 user 的聊天歷史：username -> List[ChatMessage]
+knn = None
+id2name = {}
+comments_db = {}
 user_history: Dict[str, List[ChatMessage]] = {}
 
-# 建立 Bearer 驗證器（給 Security 用）
-bearer = HTTPBearer(auto_error=False)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # --- 啟動時執行 ---
+    global knn, id2name
+    print("🚀 伺服器啟動中，開始載入模型...")
+    try:
+        # 這裡才載入模型，避免記憶體在 Import 階段就爆炸
+        knn, id2name = load_model()
+        print(f"✅ 模型載入成功！包含 {len(id2name)} 個類別")
+    except Exception as e:
+        print(f"⚠️ 模型載入失敗 (可能是記憶體不足或檔案遺失): {e}")
+        knn, id2name = None, {}
+    
+    yield  # 應用程式開始運作
+    
+    # --- 關閉時執行 (清理資源) ---
+    print("🛑 伺服器關閉，清理資源...")
+    knn = None
+    id2name = {}
 
-# 專案根目錄 / api 目錄
-API_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(API_DIR)
-key_path = os.path.join(PROJECT_ROOT, "firebase.json")
-# =========================
-# 🔥 1. Firebase 初始化
-# =========================
+# -----------------------------------------------------------
+# 4. 初始化 FastAPI 與 設定
+# -----------------------------------------------------------
+
+app = FastAPI(title="Cat Face LLM Chat", version="1.1", lifespan=lifespan)
+
+# LLM 設定檢查
+LLM_API_KEY = os.getenv("LLM_API_KEY")
+LLM_ENDPOINT = os.getenv("LLM_ENDPOINT")
+LLM_MODEL = os.getenv("LLM_MODEL", "deepseek-chat")
+
+if not LLM_API_KEY:
+    print("⚠️ 警告: LLM_API_KEY 未設定，聊天功能將無法使用")
+if not LLM_ENDPOINT:
+    print("⚠️ 警告: LLM_ENDPOINT 未設定")
+
+print("🔧 LLM 設定：")
+print(" - MODEL    =", LLM_MODEL)
+print(" - ENDPOINT =", LLM_ENDPOINT)
+print(" - KEY 前 6 =", LLM_API_KEY[:6] if LLM_API_KEY else "None", "...")
+
+# -----------------------------------------------------------
+# 5. Firebase 初始化
+# -----------------------------------------------------------
+key_path = os.path.join(PROJECT_ROOT, "firebase.json") # 定義 key_path
+
 if not firebase_admin._apps:
-    # firebase.json 放在「專案根目錄」
-    key_path = os.path.join(PROJECT_ROOT, "firebase.json")
-
     env_project_id = os.environ.get("FIREBASE_PROJECT_ID")
 
     if env_project_id:
@@ -95,9 +122,13 @@ if not firebase_admin._apps:
             "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
             "client_x509_cert_url": os.environ.get("FIREBASE_CLIENT_CERT_URL"),
         }
-        cred = credentials.Certificate(cred_dict)
-        firebase_admin.initialize_app(cred)
-        print("✅ Firebase initialized from environment variables")
+        try:
+            cred = credentials.Certificate(cred_dict)
+            firebase_admin.initialize_app(cred)
+            print("✅ Firebase initialized from environment variables")
+        except Exception as e:
+             print(f"❌ Firebase init failed (Env Vars): {e}")
+
     elif os.path.exists(key_path):
         # ✅ 沒有 env，就用本地 firebase.json
         cred = credentials.Certificate(key_path)
@@ -107,27 +138,23 @@ if not firebase_admin._apps:
         # ❌ 兩邊都沒有
         print("❌ Firebase init failed: no env vars and no firebase.json")
 
-# =========================
-# 🔐 Firebase Token 驗證
-# =========================
-def verify_firebase_token(
-    credentials: HTTPAuthorizationCredentials = Security(bearer),
-):
+# 建立 Bearer 驗證器
+bearer = HTTPBearer(auto_error=False)
+
+def verify_firebase_token(credentials: HTTPAuthorizationCredentials = Security(bearer)):
     if not credentials:
         raise HTTPException(status_code=401, detail="Missing Bearer Token")
-
     token = credentials.credentials
     try:
         decoded = auth.verify_id_token(token)
-        print("✅ Auth OK:", decoded.get("email"), decoded.get("uid"))
         return decoded
     except Exception as e:
         print("❌ Auth Failed:", e)
         raise HTTPException(status_code=401, detail="Invalid Firebase token")
 
-# =========================
-# 🔐 CORS / 靜態檔案
-# =========================
+# -----------------------------------------------------------
+# 6. Middleware 與 靜態檔案
+# -----------------------------------------------------------
 
 app.add_middleware(
     CORSMiddleware,
@@ -141,27 +168,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 前端靜態檔案（frontend 在專案根目錄）
+# 前端靜態檔案
 static_path = os.path.join(PROJECT_ROOT, "frontend")
 if os.path.exists(static_path):
     app.mount("/static", StaticFiles(directory=static_path), name="static")
 else:
     print(f"⚠️ Warning: 'frontend' folder not found at {static_path}")
 
-# =========================
-# 🧠 模型載入
-# =========================
-try:
-    knn, id2name = load_model()
-except RuntimeError as e:
-    print("[warning] load_model 失敗：", e)
-    knn, id2name = None, {}
-
-comments_db = {}  # {"mama": [留言...], ...}
-
-# =========================
-# 🌐 路由
-# =========================
+# -----------------------------------------------------------
+# 7. API路由
+# -----------------------------------------------------------
 
 @app.get("/me")
 def get_me(user = Depends(verify_firebase_token)):
@@ -190,70 +206,31 @@ def labels():
     }
 
 @app.post("/chat")
-async def chat(
-    req: ChatRequest,
-    user = Depends(verify_firebase_token),
-):
-    """
-    使用 DeepSeek / OpenAI 風格的 chat.completions API，
-    - 維持每個使用者獨立歷史（存在記憶體 user_history）
-    - 加上 system prompt（貓咪助手）
-    - 做簡單長度限制避免爆 token
-    """
+async def chat(req: ChatRequest, user = Depends(verify_firebase_token)):
     uid = user.get("uid") or user.get("email")
     if not uid:
         raise HTTPException(status_code=400, detail="No uid or email in token")
 
-    # 1. 把這次 user 訊息先寫進歷史
+    # 1. 寫入歷史
     history = user_history.setdefault(uid, [])
-    history.append(
-        ChatMessage(
-            role="user",
-            content=req.message,
-            timestamp=datetime.utcnow(),
-        )
-    )
+    history.append(ChatMessage(role="user", content=req.message, timestamp=datetime.utcnow()))
 
-    # 2. 取最近 10 則對話，防止無限變長
+    # 2. 截斷歷史
     last_messages = history[-10:]
-
-    # 簡單的內容長度限制（防止單句太長炸 token）
     def truncate(text: str, max_len: int = 1000) -> str:
         text = text or ""
-        if len(text) <= max_len:
-            return text
-        return text[-max_len:]  # 保留尾端內容即可
+        return text[-max_len:] if len(text) > max_len else text
 
-    # 3. DeepSeek / OpenAI 標準 messages 格式，加入 system prompt
+    # 3. 準備 Payload
     messages_payload = [
-        {
-            "role": "system",
-            "content": (
-                "你是一隻活潑但專業的貓咪識別與陪聊助手，"
-                "說話可以可愛一點，但重點要清楚、具體，"
-                "使用繁體中文回答。"
-            ),
-        }
+        {"role": "system", "content": "你是一隻活潑但專業的貓咪識別與陪聊助手，說話可以可愛一點，但重點要清楚、具體，使用繁體中文回答。"}
     ]
     for m in last_messages:
-        # m.role 是 "user" 或 "assistant"（你的 ChatMessage 模型）
-        messages_payload.append(
-            {
-                "role": m.role,
-                "content": truncate(m.content),
-            }
-        )
+        messages_payload.append({"role": m.role, "content": truncate(m.content)})
 
-# 4. 呼叫 LLM API
-    
-    # 👇 加入這段：定義 target_url 並處理網址
+    # 4. 呼叫 API
     target_url = LLM_ENDPOINT
-    
-    headers = {
-        "Authorization": f"Bearer {LLM_API_KEY}",
-        "Content-Type": "application/json", 
-    }
-    
+    headers = {"Authorization": f"Bearer {LLM_API_KEY}", "Content-Type": "application/json"}
     payload = {
         "model": LLM_MODEL,
         "messages": messages_payload,
@@ -263,79 +240,34 @@ async def chat(
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            # 👇 這裡現在能找到 target_url 了
             r = await client.post(target_url, headers=headers, json=payload)
-
-            # 👇 印出詳細錯誤文字
             if r.status_code != 200:
-                print(f"❌ API 回傳錯誤碼: {r.status_code}")
-                print(f"❌ API 回傳內容: {r.text}")
-
+                print(f"❌ API Error: {r.status_code} - {r.text}")
             r.raise_for_status()
             data = r.json()
-    except httpx.HTTPError as e:
-        # 這是 API 回傳 4xx 或 5xx 的情況
-        print(f"❌ API 請求失敗 (Status): {e}")
-        # 將原始錯誤回傳給前端，方便你在網頁 Console 看到
-        raise HTTPException(status_code=e.response.status_code, detail=f"API Error: {e.response.text}")
-
+            assistant_reply = data["choices"][0]["message"]["content"]
     except Exception as e:
-        # 這是連線根本沒出去（例如網址錯了、斷網）
-        print(f"❌ API 連線失敗 (Connection): {e}")
-        raise HTTPException(status_code=502, detail=f"Connection Error: {str(e)}")
-    except Exception as e:
-        print(f"❌ 未知錯誤: {e}")
+        print(f"❌ LLM Call Failed: {e}")
+        # 若失敗，回傳錯誤訊息給前端，不要讓前端掛著
         raise HTTPException(status_code=500, detail=str(e))
 
-    # DeepSeek / OpenAI 相同結構：choices[0].message.content
-    try:
-        assistant_reply = data["choices"][0]["message"]["content"]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"LLM 回傳格式異常: {str(e)}")
-
-    # 5. 把助理回覆追加到歷史
-    history.append(
-        ChatMessage(
-            role="assistant",
-            content=assistant_reply,
-            timestamp=datetime.utcnow(),
-        )
-    )
-
-    print(f"💬 LLM 回覆給 {uid}: {assistant_reply}"
-          f" (via {LLM_ENDPOINT})")
+    # 5. 寫回歷史
+    history.append(ChatMessage(role="assistant", content=assistant_reply, timestamp=datetime.utcnow()))
+    print(f"💬 LLM 回覆給 {uid}: {assistant_reply} (via {LLM_ENDPOINT})")
     
-    # 6. 回傳給前端
-    return {
-        "reply": assistant_reply,
-        "history_len": len(history),
-    }
-
-
+    return {"reply": assistant_reply, "history_len": len(history)}
 
 @app.get("/history")
 def get_history(user = Depends(verify_firebase_token)):
     uid = user.get("uid") or user.get("email")
     if not uid:
-        raise HTTPException(status_code=400, detail="No uid or email in token")
-
+        raise HTTPException(status_code=400, detail="No uid")
     history = user_history.get(uid, [])
-    return [
-        {
-            "role": m.role,
-            "content": m.content,
-            "timestamp": m.timestamp.isoformat(),
-        }
-        for m in history
-    ]
-
+    return [{"role": m.role, "content": m.content, "timestamp": m.timestamp.isoformat()} for m in history]
 
 @app.post("/camera_open")
 def camera_open(user = Depends(verify_firebase_token)):
-    email = user.get("email")
-    uid = user.get("uid")
-    print(f"📷 Camera opened by {email} ({uid})")
-    return {"email": email, "uid": uid}
+    return {"email": user.get("email"), "uid": user.get("uid")}
 
 @app.post("/reload")
 def reload_model(user: dict = Depends(verify_firebase_token)):
@@ -344,17 +276,13 @@ def reload_model(user: dict = Depends(verify_firebase_token)):
     return {"reloaded": True, "by_user": user.get("email")}
 
 @app.post("/predict")
-async def predict(
-    file: UploadFile = File(...),
-    user = Depends(verify_firebase_token),
-):
+async def predict(file: UploadFile = File(...), user = Depends(verify_firebase_token)):
     if knn is None:
         raise HTTPException(status_code=503, detail="Model not loaded on server.")
     try:
         raw = await file.read()
         img = Image.open(io.BytesIO(raw)).convert("RGB")
         img = np.array(img)[:, :, ::-1]  # RGB -> BGR
-
         H, W = img.shape[:2]
         faces = detect_cat_faces(img)
         boxes = []
@@ -364,29 +292,12 @@ async def predict(
             pred = knn.predict(feat)[0]
             distances, _ = knn.kneighbors(feat, n_neighbors=K, return_distance=True)
             proba = float(np.clip((1 - distances[0]).mean(), 0.0, 1.0))
-
             name = id2name.get(int(pred), "Unknown")
             if proba < UNKNOWN_THRESHOLD:
                 name = "Unknown"
+            boxes.append({"x": int(x), "y": int(y), "w": int(w), "h": int(h), "name": name, "proba": proba})
 
-            boxes.append({
-                "x": int(x),
-                "y": int(y),
-                "w": int(w),
-                "h": int(h),
-                "name": name,
-                "proba": proba,
-            })
-
-        return {
-            "user": {
-                "uid": user.get("uid"),
-                "email": user.get("email"),
-            },
-            "width": W,
-            "height": H,
-            "boxes": boxes,
-        }
+        return {"user": {"uid": user.get("uid"), "email": user.get("email")}, "width": W, "height": H, "boxes": boxes}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -395,11 +306,7 @@ def get_comments(cat_name: str):
     return {"cat": cat_name, "comments": comments_db.get(cat_name, [])}
 
 @app.post("/comment")
-def post_comment(
-    cat_name: str,
-    payload: dict,
-    user = Depends(verify_firebase_token),
-):
+def post_comment(cat_name: str, payload: dict, user = Depends(verify_firebase_token)):
     text = payload.get("text", "").strip()
     if not text:
         raise HTTPException(status_code=400, detail="Empty comment")
@@ -408,17 +315,13 @@ def post_comment(
     if cat_name not in comments_db:
         comments_db[cat_name] = []
 
-    comments_db[cat_name].append({
-        "text": text,
-        "author": author,
-    })
-
-    # =========================
-    # 🚀 啟動點 (Local 開發用)
-    # =========================
-    if __name__ == "__main__":
-        import uvicorn
-        # 這樣你可以直接用 python api/index.py 執行
-        uvicorn.run("index:app", host="127.0.0.1", port=8000, reload=True)
-
+    comments_db[cat_name].append({"text": text, "author": author})
     return {"cat": cat_name, "comments": comments_db[cat_name]}
+
+# -----------------------------------------------------------
+# 8. 程式進入點 (移到最外層)
+# -----------------------------------------------------------
+if __name__ == "__main__":
+    import uvicorn
+    # 這樣你可以直接用 python api/index.py 執行
+    uvicorn.run("api.index:app", host="127.0.0.1", port=8000, reload=True)
