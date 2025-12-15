@@ -14,10 +14,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Response
 
 import firebase_admin
 from firebase_admin import credentials, auth
 from dotenv import load_dotenv
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))     # .../cat_f_id-main/api
+PROJECT_ROOT = os.path.dirname(BASE_DIR)                  # .../cat_f_id-main
 
 # -----------------------------------------------------------
 # 1. 路徑與環境設定
