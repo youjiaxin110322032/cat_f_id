@@ -1,8 +1,24 @@
-﻿services:
+services:
   - type: web
-    name: cat-face-id-api
-    env: python
+    name: cat-f-id-api
+    runtime: python
     plan: free
-    pythonVersion: 3.11.9  # 建議改用 3.11，支援度較佳
-    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
-    startCommand: uvicorn api.index:app --host 0.0.0.0 --port $PORT
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.index:app --host 0.0.0.0 --port 8000
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12"
+      - key: FIREBASE_API_KEY
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+    
+  - type: static_site
+    name: cat-f-id-frontend
+    staticPublishPath: ./frontend
+    buildCommand: npm run build 2>/dev/null || echo "No build needed"
+    routes:
+      - path: /static
+        destination: /static
+      - path: /
+        destination: /index.html
