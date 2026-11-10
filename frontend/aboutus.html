@@ -2,44 +2,22 @@
 <html lang="zh-TW">
 <head>
     <meta charset="utf-8" />
-    <title>Cat Face ID</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>猴硐貓村數位導覽計畫 | Cat Face ID</title>
     <link rel="stylesheet" href="/static/style.css">
-</head>
-<body class="bg-houtong-cream selection:bg-houtong-accent/30 min-h-screen flex flex-col">
-    <header>
-    <div>
-      <h1>猴硐貓村觀光指南 | 貓臉辨識系統</h1>
-      <p class="api">API：<span id="api-url"></span></p>
-      <p class="known">已知貓咪：<span id="knownCats">載入中…</span></p>
-    </div>
-    <nav>
-      <a href="/static/index.html">貓臉辨識</a>
-      <a href="#" class="current-page">關於我們</a>
-      <p id="userEmail"></p>
-      <button id="navBtnLogin">登入</button>
-      <button id="navBtnRegister">註冊</button>
-      <button id="navBtnLogout" style="display:none;">登出</button>
-    </nav>
-  </header>
 
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>猴硐貓村數位導覽計畫</title>
-    
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
                         houtong: {
-                            cream: '#f9f7f2',   /* 溫暖的米色背景 */
-                            brown: '#5D4037',   /* 深褐/煤礦色 */
-                            green: '#689F38',   /* 自然綠 */
-                            accent: '#FFB74D',  /* 橘貓色/亮點 */
-                            dark: '#2d2a26',    /* 頁尾深色 */
+                            cream: '#f9f7f2',
+                            brown: '#5D4037',
+                            green: '#689F38',
+                            accent: '#FFB74D',
+                            dark: '#2d2a26',
                         }
                     },
                     fontFamily: {
@@ -52,377 +30,455 @@
     </script>
 
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@700&display=swap" rel="stylesheet">
-    
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
-        /* 額外修飾 */
         body {
             font-family: 'Noto Sans TC', sans-serif;
+            scroll-behavior: smooth;
+        }
+
+        /* 固定導覽列搭配玻璃擬態 */
+        nav.sticky {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            background: rgba(234, 166, 63, 0.95);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        body {
+            padding-top: 0;
+        }
+
+        body.nav-fixed {
+            padding-top: 0;
+        }
+
+        /* 漢堡菜單動畫 */
+        .hamburger {
+            display: none;
+            flex-direction: column;
+            cursor: pointer;
+            gap: 5px;
+        }
+
+        .hamburger span {
+            width: 25px;
+            height: 3px;
+            background: white;
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .hamburger.active span:nth-child(1) {
+            transform: rotate(45deg) translate(8px, 8px);
+        }
+
+        .hamburger.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .hamburger.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(7px, -7px);
+        }
+
+        /* 行動菜單 */
+        @media (max-width: 768px) {
+            .hamburger {
+                display: flex;
+            }
+
+            header nav {
+                position: absolute;
+                top: 70px;
+                left: 0;
+                right: 0;
+                flex-direction: column;
+                gap: 0;
+                background: rgba(234, 166, 63, 0.98);
+                padding: 20px 0;
+                max-height: 0;
+                overflow: hidden;
+                transition: max-height 0.3s ease;
+            }
+
+            header nav.active {
+                max-height: 300px;
+            }
+
+            header nav a {
+                padding: 15px 20px;
+                border: none;
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+                display: block;
+            }
         }
     </style>
+</head>
+<body class="bg-houtong-cream selection:bg-houtong-accent/30 min-h-screen flex flex-col">
+    <header class="bg-yellow-600 text-white sticky top-0 z-50 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-20">
+            <!-- 品牌識別 -->
+            <div class="flex items-center">
+                <h1 class="text-xl sm:text-2xl font-bold font-display">🐱 猴硐貓村</h1>
+            </div>
 
-    <div class="relative w-full h-[400px] bg-houtong-brown overflow-hidden">
-        <img src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=2043&auto=format&fit=crop" alt="Cat Background" class="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-overlay">
-        <div class="absolute inset-0 bg-gradient-to-t from-houtong-cream to-transparent"></div>
-        
-        <div class="container mx-auto px-6 h-full flex flex-col justify-center items-start relative z-10 pt-40">
-            <span class="bg-houtong-accent/20 text-houtong-brown px-3 py-1 rounded-full text-sm font-bold mb-4 backdrop-blur-sm border border-houtong-accent/30">
-                2025 地方創生提案
-            </span>
-            <h1 class="text-4xl md:text-6xl font-display font-bold text-houtong-brown mb-4">
-                猴硐貓村<br>數位導覽計畫
-            </h1>
-            <p class="text-lg md:text-xl text-gray-700 max-w-xl">
-                以永續觀光為核心，重新連結遊客、居民與貓咪的共生關係。
-            </p>
+            <!-- 導覽菜單 (桌面版) -->
+            <nav class="hidden md:flex gap-8 items-center">
+                <a href="/static/index.html" class="hover:text-yellow-200 transition font-medium">主頁</a>
+                <a href="#solution" class="hover:text-yellow-200 transition font-medium">解決方案</a>
+                <a href="#contact" class="hover:text-yellow-200 transition font-medium">聯絡方式</a>
+                <a href="/static/index.html" class="bg-white text-yellow-600 px-6 py-2 rounded-full font-bold hover:bg-yellow-100 transition">
+                    🐾 貓臉辨識
+                </a>
+            </nav>
+
+            <!-- 漢堡菜單 (手機版) -->
+            <div class="md:hidden flex items-center gap-4">
+                <a href="/static/index.html" class="bg-white text-yellow-600 px-3 py-1 rounded-full text-sm font-bold hover:bg-yellow-100 transition">
+                    貓臉辨識
+                </a>
+                <button class="hamburger" id="hamburger">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+
+            <!-- 行動版菜單 -->
+            <nav class="md:hidden absolute top-20 left-0 right-0 bg-yellow-600 flex flex-col gap-0" id="mobile-menu">
+                <a href="/static/index.html" class="px-4 py-3 hover:bg-yellow-700 transition border-b border-yellow-500">主頁</a>
+                <a href="#solution" class="px-4 py-3 hover:bg-yellow-700 transition border-b border-yellow-500">解決方案</a>
+                <a href="#contact" class="px-4 py-3 hover:bg-yellow-700 transition">聯絡方式</a>
+            </nav>
         </div>
-    </div>
+    </header>
 
-    
+    <!-- Hero Section -->
+    <section class="relative w-full pt-24 pb-16 bg-gradient-to-b from-houtong-cream via-houtong-cream to-white overflow-hidden">
+        <div class="absolute inset-0">
+            <img src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=2043&auto=format&fit=crop" alt="Background" class="w-full h-full object-cover opacity-15">
+            <div class="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent"></div>
+        </div>
 
-    <main class="container mx-auto px-6 py-16 flex flex-col lg:flex-row gap-12 relative flex-grow">
-        
-        <article class="flex-grow w-full lg:w-2/3 space-y-12">
-            
-            <div class="section-container">
-                <div class="flex items-center gap-3 mb-6 border-b border-houtong-brown/10 pb-4">
-                    <i data-lucide="leaf" class="text-houtong-green w-8 h-8"></i>
-                    <h2 class="text-2xl font-bold text-houtong-brown">核心理念</h2>
+        <div class="container mx-auto px-6 relative z-10">
+            <div class="max-w-4xl mx-auto text-center">
+                <div class="inline-block bg-houtong-accent/20 text-houtong-brown px-4 py-2 rounded-full text-sm font-bold mb-6 border border-houtong-accent/40">
+                    ✨ 2025 地方創生提案
                 </div>
-                <div class="text-gray-700 leading-relaxed text-lg">
-                    <p class="mb-4">
-                        本計畫以<strong class="text-houtong-brown">「永續觀光、地方再生、文化傳承」</strong>為核心理念，
-                        結合 <strong>SDGs 永續發展目標</strong>（尤其是目標 8：體面工作和經濟增長，以及目標 11：永續城市與社區），
-                        致力於打造可延伸至全台的<strong>模組化數位旅遊平台</strong>。
-                    </p>
-                    <p>
-                        我們選擇以<span class="bg-houtong-accent/20 px-2 py-0.5 rounded mx-1 font-bold text-houtong-brown">猴硐貓村</span>為示範起點，
-                        試圖建立一套能兼顧「遊客體驗價值」與「在地經濟發展」的智慧觀光新模式。
-                        這不僅是一個短期的導覽工具，更是為了長遠的地方創生而設計的數位基礎建設。
-                    </p>
+                <h1 class="text-5xl md:text-7xl font-display font-bold text-houtong-brown mb-6 leading-tight">
+                    猴硐貓村<br class="hidden md:block">數位導覽計畫
+                </h1>
+                <p class="text-lg md:text-2xl text-gray-700 mb-8 max-w-3xl mx-auto leading-relaxed">
+                    以永續觀光為核心，重新連結遊客、居民與貓咪的共生關係
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                    <a href="/static/index.html" class="bg-houtong-accent hover:bg-houtong-accent/90 text-white px-8 py-3 rounded-full font-bold text-lg transition transform hover:scale-105">
+                        🐾 開始辨識
+                    </a>
+                    <a href="#solution" class="border-2 border-houtong-brown text-houtong-brown hover:bg-houtong-brown hover:text-white px-8 py-3 rounded-full font-bold text-lg transition">
+                        了解方案
+                    </a>
                 </div>
             </div>
+        </div>
+    </section>
 
-            <div class="section-container">
-                <div class="flex items-center gap-3 mb-6 border-b border-houtong-brown/10 pb-4">
-                    <i data-lucide="alert-triangle" class="text-red-400 w-8 h-8"></i>
-                    <h2 class="text-2xl font-bold text-houtong-brown">當前挑戰</h2>
-                </div>
-                <div class="text-gray-700 leading-relaxed text-lg">
-                    <p class="mb-4">
-                        觀光產業雖常被視為「低污染、高附加價值」的經濟引擎，然而在實際運作中，多數特色觀光地區仍面臨著結構性的問題。
-                        以猴硐為例：
-                    </p>
-                    <ul class="list-disc pl-6 space-y-2 marker:text-houtong-accent">
-                        <li><strong>導覽資訊分散：</strong>遊客難以獲取整合性的交通、店家與生態資訊。</li>
-                        <li><strong>旅遊體驗缺乏互動：</strong>傳統走馬看花的行程，難以產生深度文化連結。</li>
-                        <li><strong>商圈收益有限：</strong>遊客停留時間短，消費轉化率低，未能有效回饋在地。</li>
-                    </ul>
-                </div>
-            </div>
+    <main class="w-full py-12 flex-grow">
+        <div class="container mx-auto px-6 max-w-6xl">
 
-            <div class="section-container">
-                <div class="flex items-center gap-3 mb-6 border-b border-houtong-brown/10 pb-4">
-                    <i data-lucide="lightbulb" class="text-yellow-500 w-8 h-8"></i>
-                    <h2 class="text-2xl font-bold text-houtong-brown">解決方案：猴硐貓村數位導覽系統</h2>
+        <article class="space-y-16">
+
+            <!-- 核心理念 Section -->
+            <section class="py-12">
+                <div class="flex items-center gap-3 mb-8">
+                    <i data-lucide="leaf" class="text-houtong-green w-10 h-10"></i>
+                    <h2 class="text-3xl md:text-4xl font-bold text-houtong-brown">核心理念</h2>
                 </div>
-                <div class="text-gray-700 leading-relaxed text-lg">
-                    <p class="mb-4">
-                        針對上述痛點，計畫透過提出一套可擴散的數位解決方案——<strong class="text-2xl font-display text-houtong-brown block my-3">猴硐貓村數位導覽系統</strong>
-                    </p>
-                    <p class="mb-6">
-                        這不只是單純的導航工具，而是一項<strong>重新設計遊客參與模式的策略性行動</strong>。
-                        我們打造永續、具教育性且能兼顧各方經濟利益的新型態觀光模式。
-                        其終極目標是重整<span class="border-b-2 border-houtong-brown mx-1">「遊客 — 居民 — 動物」</span>三者之間的關係，
-                        在滿足觀光需求的同時，確保這座獨特文化地標的長久活力。
-                    </p>
-                    <div class="p-6 bg-white rounded-2xl shadow-inner border border-houtong-brown/10">
-                        <p class="font-bold text-houtong-brown mb-2 text-base">為了理解本方案的創新之處，必須先掌握其欲解決的多面向問題！</p>
-                        <p class="text-sm text-gray-600">我們運用物聯網與大數據分析，將被動的景點介紹轉化為依據情境（天氣、人流、貓咪狀況）的主動式服務。</p>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="bg-white p-8 rounded-2xl shadow-lg border border-houtong-accent/20">
+                        <h3 class="text-xl font-bold text-houtong-brown mb-4">🌱 永續觀光</h3>
+                        <p class="text-gray-700 leading-relaxed">
+                            結合 <strong>SDGs 永續發展目標</strong>（目標 8 & 11），打造可延伸至全台的模組化數位旅遊平台。
+                        </p>
+                    </div>
+                    <div class="bg-white p-8 rounded-2xl shadow-lg border border-houtong-accent/20">
+                        <h3 class="text-xl font-bold text-houtong-brown mb-4">🏘️ 地方創生</h3>
+                        <p class="text-gray-700 leading-relaxed">
+                            建立能兼顧「遊客體驗價值」與「在地經濟發展」的智慧觀光新模式。
+                        </p>
                     </div>
                 </div>
-            </div>
+            </section>
+
+            <!-- 痛點 vs 解決方案 Section -->
+            <section class="py-12" id="solution">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold text-houtong-brown mb-4">當前挑戰 vs 數位解決方案</h2>
+                    <p class="text-gray-600 text-lg">發現猴硐觀光的痛點，並提出創新解方</p>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-8 mb-12">
+                    <!-- 當前挑戰 -->
+                    <div class="bg-red-50 p-8 rounded-2xl border-2 border-red-200">
+                        <div class="flex items-center gap-3 mb-6">
+                            <i data-lucide="alert-triangle" class="text-red-500 w-8 h-8"></i>
+                            <h3 class="text-2xl font-bold text-red-700">當前挑戰</h3>
+                        </div>
+                        <ul class="space-y-4">
+                            <li class="flex gap-3">
+                                <span class="text-red-500 font-bold text-xl">❌</span>
+                                <div>
+                                    <strong class="text-red-700">導覽資訊分散</strong>
+                                    <p class="text-gray-700 text-sm">遊客難以獲取整合性的交通、店家與生態資訊</p>
+                                </div>
+                            </li>
+                            <li class="flex gap-3">
+                                <span class="text-red-500 font-bold text-xl">❌</span>
+                                <div>
+                                    <strong class="text-red-700">體驗缺乏互動</strong>
+                                    <p class="text-gray-700 text-sm">傳統走馬看花，難以產生深度文化連結</p>
+                                </div>
+                            </li>
+                            <li class="flex gap-3">
+                                <span class="text-red-500 font-bold text-xl">❌</span>
+                                <div>
+                                    <strong class="text-red-700">商圈收益有限</strong>
+                                    <p class="text-gray-700 text-sm">遊客停留時間短，未能有效回饋在地</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- 解決方案 -->
+                    <div class="bg-green-50 p-8 rounded-2xl border-2 border-houtong-green">
+                        <div class="flex items-center gap-3 mb-6">
+                            <i data-lucide="lightbulb" class="text-houtong-green w-8 h-8"></i>
+                            <h3 class="text-2xl font-bold text-houtong-green">數位解方</h3>
+                        </div>
+                        <ul class="space-y-4">
+                            <li class="flex gap-3">
+                                <span class="text-houtong-green font-bold text-xl">✅</span>
+                                <div>
+                                    <strong class="text-houtong-green">智慧整合平台</strong>
+                                    <p class="text-gray-700 text-sm">一站式數位導覽，整合交通、美食、生態資訊</p>
+                                </div>
+                            </li>
+                            <li class="flex gap-3">
+                                <span class="text-houtong-green font-bold text-xl">✅</span>
+                                <div>
+                                    <strong class="text-houtong-green">互動式體驗</strong>
+                                    <p class="text-gray-700 text-sm">AI 貓臉辨識、即時資訊推薦，深化文化連結</p>
+                                </div>
+                            </li>
+                            <li class="flex gap-3">
+                                <span class="text-houtong-green font-bold text-xl">✅</span>
+                                <div>
+                                    <strong class="text-houtong-green">永續收益模式</strong>
+                                    <p class="text-gray-700 text-sm">延長遊客停留時間，有效提升在地消費轉化</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 解決方案詳細 -->
+            <section class="py-12">
+                <div class="bg-gradient-to-br from-houtong-brown to-houtong-dark text-white p-12 rounded-3xl mb-12">
+                    <div class="flex items-center gap-3 mb-6">
+                        <i data-lucide="zap" class="w-8 h-8 text-houtong-accent"></i>
+                        <h2 class="text-3xl md:text-4xl font-bold">猴硐貓村數位導覽系統</h2>
+                    </div>
+                    <p class="text-lg mb-6 opacity-90">
+                        一套可擴散的數位解決方案，重新設計遊客參與模式。運用 <strong>物聯網與大數據分析</strong>，將被動景點介紹轉為依據情境（天氣、人流、貓咪狀況）的主動式服務。
+                    </p>
+                    <p class="text-lg opacity-90">
+                        目標：重整<strong>「遊客—居民—動物」</strong>三者關係，確保獨特文化地標長久活力。
+                    </p>
+                </div>
+
+                <!-- 為什麼是猴硐 -->
+                <div class="bg-houtong-accent/10 border-2 border-houtong-accent p-8 rounded-2xl">
+                    <div class="flex items-center gap-3 mb-6">
+                        <i data-lucide="map-pin" class="text-houtong-accent w-8 h-8"></i>
+                        <h3 class="text-2xl font-bold text-houtong-brown">為什麼是猴硐？</h3>
+                    </div>
+                    <p class="text-gray-700 mb-6 text-lg">
+                        猴硐需要整合性解法，智慧管理遊客行為、主動保護動物居民，為社群打造韌性永續的經濟模式。
+                    </p>
+                    <div class="flex flex-wrap gap-3">
+                        <span class="bg-houtong-green text-white px-4 py-2 rounded-full font-bold">#智慧管理</span>
+                        <span class="bg-houtong-green text-white px-4 py-2 rounded-full font-bold">#動物保護</span>
+                        <span class="bg-houtong-green text-white px-4 py-2 rounded-full font-bold">#永續經濟</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 核心轉型：3 大特點 -->
+            <section class="py-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-houtong-brown text-center mb-12">核心轉型：三大價值支柱</h2>
+
+                <div class="grid md:grid-cols-3 gap-8">
+                    <div class="bg-white p-8 rounded-2xl shadow-lg border-l-4 border-houtong-accent hover:shadow-xl transition">
+                        <div class="flex items-center gap-3 mb-4">
+                            <i data-lucide="footprints" class="text-houtong-accent w-8 h-8"></i>
+                            <h3 class="text-xl font-bold text-houtong-brown">重構旅程</h3>
+                        </div>
+                        <p class="text-gray-700">
+                            從走馬看花轉向深度探索，讓遊客更深入體驗猴硐的自然與人文魅力。
+                        </p>
+                    </div>
+
+                    <div class="bg-white p-8 rounded-2xl shadow-lg border-l-4 border-houtong-green hover:shadow-xl transition">
+                        <div class="flex items-center gap-3 mb-4">
+                            <i data-lucide="heart" class="text-houtong-green w-8 h-8"></i>
+                            <h3 class="text-xl font-bold text-houtong-brown">價值移轉</h3>
+                        </div>
+                        <p class="text-gray-700">
+                            從被動消費移轉到主動、留心、尊重的參與，建立遊客與在地的真實連結。
+                        </p>
+                    </div>
+
+                    <div class="bg-white p-8 rounded-2xl shadow-lg border-l-4 border-houtong-brown hover:shadow-xl transition">
+                        <div class="flex items-center gap-3 mb-4">
+                            <i data-lucide="shield-check" class="text-houtong-brown w-8 h-8"></i>
+                            <h3 class="text-xl font-bold text-houtong-brown">共生共榮</h3>
+                        </div>
+                        <p class="text-gray-700">
+                            打造遊客與在地居民及貓咪的友善循環，實現真正的永續觀光。
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 聯絡方式 Section -->
+            <section class="py-12" id="contact">
+                <h2 class="text-3xl md:text-4xl font-bold text-houtong-brown text-center mb-12">聯絡方式</h2>
+
+                <div class="grid md:grid-cols-3 gap-8">
+                    <div class="bg-white p-8 rounded-2xl shadow-lg text-center border-t-4 border-houtong-accent">
+                        <div class="text-4xl mb-4">📧</div>
+                        <h3 class="text-xl font-bold text-houtong-brown mb-2">Email</h3>
+                        <p class="text-gray-700">contact@houtong-tourism.tw</p>
+                    </div>
+
+                    <div class="bg-white p-8 rounded-2xl shadow-lg text-center border-t-4 border-houtong-green">
+                        <div class="text-4xl mb-4">📱</div>
+                        <h3 class="text-xl font-bold text-houtong-brown mb-2">電話</h3>
+                        <p class="text-gray-700">(02) 2497-XXXX</p>
+                    </div>
+
+                    <div class="bg-white p-8 rounded-2xl shadow-lg text-center border-t-4 border-houtong-brown">
+                        <div class="text-4xl mb-4">📍</div>
+                        <h3 class="text-xl font-bold text-houtong-brown mb-2">地址</h3>
+                        <p class="text-gray-700">新北市瑞芳區猴硐</p>
+                    </div>
+                </div>
+
+                <div class="mt-12 bg-gradient-to-r from-houtong-accent to-houtong-green text-white p-8 rounded-2xl text-center">
+                    <h3 class="text-2xl font-bold mb-4">立即開始你的猴硐體驗</h3>
+                    <p class="text-lg mb-6 opacity-90">透過貓臉辨識系統，與這些迷人的貓咪相遇，深入體驗永續觀光的魅力</p>
+                    <a href="/static/index.html" class="inline-block bg-white text-houtong-accent px-8 py-3 rounded-full font-bold text-lg hover:bg-gray-100 transition">
+                        🐾 開始辨識
+                    </a>
+                </div>
+            </section>
 
         </article>
-
-        <aside class="w-full lg:w-1/3 space-y-8">
-            
-            <div class="sticky top-8">
-                
-                <div class="bg-white p-8 rounded-3xl shadow-[8px_8px_0px_0px_rgba(93,64,55,0.1)] border-2 border-houtong-brown/10 mb-8">
-                    <h3 class="text-xl font-bold text-houtong-brown mb-4 flex items-center gap-2">
-                        <i data-lucide="map-pin" class="text-houtong-accent w-5 h-5"></i>
-                        為什麼是猴硐？
-                    </h3>
-                    <p class="text-gray-600 leading-relaxed mb-4 text-justify">
-                        猴硐需要一套整合性解法，能智慧管理遊客行為、主動保護動物居民、並為地方社群打造穩定、韌性與永續的經濟模式。
-                    </p>
-                    <div class="flex flex-wrap gap-2">
-                        <span class="px-3 py-1 bg-houtong-green/10 text-houtong-green rounded-full text-xs font-bold">#智慧管理</span>
-                        <span class="px-3 py-1 bg-houtong-green/10 text-houtong-green rounded-full text-xs font-bold">#動物保護</span>
-                        <span class="px-3 py-1 bg-houtong-green/10 text-houtong-green rounded-full text-xs font-bold">#永續經濟</span>
-                    </div>
-                </div>
-
-                <div class="bg-houtong-brown text-white p-8 rounded-3xl shadow-xl relative overflow-hidden">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10"></div>
-                    <h3 class="text-xl font-bold mb-4 flex items-center gap-2 relative z-10">
-                        <i data-lucide="trending-up" class="text-houtong-accent w-5 h-5"></i>
-                        核心轉型
-                    </h3>
-                    <p class="mb-6 leading-relaxed font-light opacity-90 text-justify relative z-10">
-                        不僅需要「管理」，更需要從根本重塑遊客體驗的「轉型」。
-                        我們的解方以<strong class="text-houtong-accent text-lg mx-1">「慢旅行」</strong>重構價值主張。
-                    </p>
-                    
-                    <div class="space-y-4 relative z-10">
-                        <div class="flex items-start gap-3">
-                            <div class="bg-white/10 p-2 rounded-lg mt-1 shrink-0">
-                                <i data-lucide="footprints" class="w-4 h-4"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-bold text-houtong-accent text-sm">重構旅程</h4>
-                                <p class="text-xs opacity-80 mt-1">從走馬看花轉向深度探索。</p>
-                            </div>
-                        </div>
-                        <div class="flex items-start gap-3">
-                            <div class="bg-white/10 p-2 rounded-lg mt-1 shrink-0">
-                                <i data-lucide="heart" class="w-4 h-4"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-bold text-houtong-accent text-sm">價值移轉</h4>
-                                <p class="text-xs opacity-80 mt-1">從被動消費移轉到主動、留心、尊重的參與。</p>
-                            </div>
-                        </div>
-                        <div class="flex items-start gap-3">
-                            <div class="bg-white/10 p-2 rounded-lg mt-1 shrink-0">
-                                <i data-lucide="shield-check" class="w-4 h-4"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-bold text-houtong-accent text-sm">共生共榮</h4>
-                                <p class="text-xs opacity-80 mt-1">打造遊客與在地居民及貓咪的友善循環。</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </aside>
-
+        </div>
     </main>
 
-    <footer class="bg-houtong-dark text-white/80 py-12 mt-12 border-t-8 border-houtong-accent">
-        <div class="container mx-auto px-6 text-center">
-            <div class="flex justify-center gap-6 mb-8">
-                <span class="w-2 h-2 rounded-full bg-houtong-accent"></span>
-                <span class="w-2 h-2 rounded-full bg-white"></span>
-                <span class="w-2 h-2 rounded-full bg-houtong-accent"></span>
+    <footer class="bg-houtong-dark text-white/80 py-16 mt-12 border-t-8 border-houtong-accent">
+        <div class="container mx-auto px-6">
+            <div class="grid md:grid-cols-3 gap-8 mb-12">
+                <div>
+                    <h3 class="text-xl font-bold text-white mb-4">🐱 猴硐貓村</h3>
+                    <p class="text-sm opacity-80">數位觀光的地方創生示範計畫</p>
+                </div>
+                <div>
+                    <h4 class="font-bold text-white mb-3">快速連結</h4>
+                    <ul class="text-sm space-y-2 opacity-80">
+                        <li><a href="/static/index.html" class="hover:text-white transition">貓臉辨識</a></li>
+                        <li><a href="#solution" class="hover:text-white transition">解決方案</a></li>
+                        <li><a href="#contact" class="hover:text-white transition">聯絡方式</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold text-white mb-3">追蹤我們</h4>
+                    <p class="text-sm opacity-80">Facebook • Instagram • Twitter</p>
+                </div>
             </div>
-            <p class="font-display font-bold text-2xl text-white mb-2">數位 × 觀光</p>
-            <p class="text-sm mb-6 opacity-60">一站式模組化整合系統</p>
-            <p class="text-xs opacity-40">© 2025 Houtong Digital Tourism Initiative. All Rights Reserved.</p>
+
+            <div class="border-t border-white/20 pt-8 text-center">
+                <div class="flex justify-center gap-6 mb-6">
+                    <span class="w-2 h-2 rounded-full bg-houtong-accent"></span>
+                    <span class="w-2 h-2 rounded-full bg-white"></span>
+                    <span class="w-2 h-2 rounded-full bg-houtong-accent"></span>
+                </div>
+                <p class="font-display font-bold text-xl text-white mb-2">數位 × 觀光</p>
+                <p class="text-sm mb-4 opacity-60">一站式模組化整合系統</p>
+                <p class="text-xs opacity-40">© 2025 Houtong Digital Tourism Initiative. All Rights Reserved.</p>
+            </div>
         </div>
     </footer>
 
-  <!-- 貓爪游標 -->
-  <img id="cat-cursor" src="/static/more_img/cat_hand.png" alt="cursor" />
-
-  <script type="module">
-    // =========================
-    // 1. Firebase 初始化
-    // =========================
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import {
-      getAuth,
-      signInWithEmailAndPassword,
-      createUserWithEmailAndPassword,
-      signOut,
-      onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyDcvsZn418xMLXL9KuM5FQaAmFhtsCvd8E",
-      authDomain: "cat-f-id.firebaseapp.com",
-      databaseURL: "https://cat-f-id-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "cat-f-id",
-      storageBucket: "cat-f-id.firebasestorage.app",
-      messagingSenderId: "717846269620",
-      appId: "1:717846269620:web:4b6d0ae716b7b60ae891e1"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-
-    // =========================
-    // 2. 頁面元素
-    // =========================
-    const navBtnLogin    = document.getElementById("navBtnLogin");
-    const navBtnLogout   = document.getElementById("navBtnLogout");
-    const navBtnRegister = document.getElementById("navBtnRegister");
-    const userEmailSpan  = document.getElementById("userEmail");
-
-    const loginModal       = document.getElementById("loginModal");
-    const loginEmail       = document.getElementById("loginEmail");
-    const loginPwd         = document.getElementById("loginPwd");
-    const btnDoLogin       = document.getElementById("btnDoLogin");
-    const loginError       = document.getElementById("loginError");
-    const modalCloseLogin  = document.getElementById("modalCloseLogin");
-
-    const registerModal      = document.getElementById("registerModal");
-    const regEmail           = document.getElementById("regEmail");
-    const regPwd             = document.getElementById("regPwd");
-    const btnDoRegister      = document.getElementById("btnDoRegister");
-    const regError           = document.getElementById("regError");
-    const gotoRegister       = document.getElementById("gotoRegister");
-    const gotoLogin          = document.getElementById("gotoLogin");
-    const modalCloseRegister = document.getElementById("modalCloseRegister");
-
-    // =========================
-    // 3. Firebase 登入/註冊/登出
-    // =========================
-    function openBackdrop(el) {
-      if (!el) return;
-      el.classList.remove("hidden");
-      el.style.display = "flex";
-    }
-    function closeBackdrop(el) {
-      if (!el) return;
-      el.classList.add("hidden");
-      el.style.display = "none";
-    }
-
-    if (navBtnLogin) {
-      navBtnLogin.addEventListener("click", (e) => {
-        e.preventDefault();
-        if (!loginModal) return;
-        if (loginError) loginError.textContent = "";
-        openBackdrop(loginModal); 
-      });
-    }
-
-    if (navBtnRegister) {
-      navBtnRegister.addEventListener("click", (e) => {
-        e.preventDefault();
-        if (!registerModal) return;
-        if (regError) regError.textContent = "";
-        openBackdrop(registerModal);
-      });
-    }
-
-    if (modalCloseLogin && loginModal) {
-      modalCloseLogin.addEventListener("click", () => closeBackdrop(loginModal));
-    }
-    if (modalCloseRegister && registerModal) {
-      modalCloseRegister.addEventListener("click", () => closeBackdrop(registerModal));
-    }
-
-    if (loginModal) {
-      loginModal.addEventListener("click", (e) => {
-        if (e.target === loginModal) closeBackdrop(loginModal);
-      });
-    }
-    if (registerModal) {
-      registerModal.addEventListener("click", (e) => {
-        if (e.target === registerModal) closeBackdrop(registerModal);
-      });
-    }
-
-    if (gotoRegister) {
-      gotoRegister.addEventListener("click", () => {
-        closeBackdrop(loginModal);
-        openBackdrop(registerModal);
-        if (regError) regError.textContent = "";
-      });
-    }
-
-    if (gotoLogin) {
-      gotoLogin.addEventListener("click", () => {
-        closeBackdrop(registerModal);
-        openBackdrop(loginModal);
-        if (loginError) loginError.textContent = "";
-      });
-    }
-
-    if (btnDoLogin) {
-      btnDoLogin.addEventListener("click", async () => {
-        try {
-          await signInWithEmailAndPassword(auth, loginEmail.value, loginPwd.value);
-          closeBackdrop(loginModal);
-          loginEmail.value = "";
-          loginPwd.value = "";
-        } catch (e) {
-          if (loginError) loginError.textContent = "登入失敗：" + e.message;
-        }
-      });
-    }
-
-    if (btnDoRegister) {
-      btnDoRegister.addEventListener("click", async () => {
-        const email = regEmail.value;
-        const password = regPwd.value;
-        if (password.length < 6) {
-          if (regError) regError.textContent = "密碼長度需至少 6 個字元";
-          return;
-        }
-        try {
-          await createUserWithEmailAndPassword(auth, email, password);
-          alert("註冊成功！已自動登入。");
-          closeBackdrop(registerModal);
-          regEmail.value = "";
-          regPwd.value = "";
-        } catch (e) {
-          if (!regError) return;
-          if (e.code === "auth/email-already-in-use") {
-            regError.textContent = "此 Email 已經被註冊過了";
-          } else {
-            regError.textContent = "註冊失敗：" + e.message;
-          }
-        }
-      });
-    }
-
-    if (navBtnLogout) {
-      navBtnLogout.addEventListener("click", async (e) => {
-        e.preventDefault();
-        await signOut(auth);
-        alert("已登出");
-      });
-    }
-
-    onAuthStateChanged(auth, (user) => {
-      if (!navBtnLogin || !navBtnRegister || !navBtnLogout || !userEmailSpan) return;
-      if (user) {
-        navBtnLogin.style.display    = "none";
-        navBtnRegister.style.display = "none";
-        navBtnLogout.style.display   = "inline-block";
-        userEmailSpan.textContent    = user.email || "";
-      } else {
-        navBtnLogin.style.display    = "inline-block";
-        navBtnRegister.style.display = "inline-block";
-        navBtnLogout.style.display   = "none";
-        userEmailSpan.textContent    = "";
-      }
-    });
-
-    // =========================
-    // 4. 貓爪游標
-    // =========================
-    const catCursor = document.getElementById("cat-cursor");
-    if (catCursor) {
-      document.addEventListener("mousemove", e => {
-        catCursor.style.left = `${e.clientX}px`;
-        catCursor.style.top  = `${e.clientY}px`;
-      });
-      document.addEventListener("click", () => {
-        catCursor.style.transform = "scale(0.9)";
-        setTimeout(() => catCursor.style.transform = "scale(1)", 100);
-      });
-    }
-  </script>
+    <!-- 貓爪游標 -->
+    <img id="cat-cursor" src="/static/more_img/cat_hand.png" alt="cursor" />
 
     <script>
+        // 漢堡菜單邏輯
+        const hamburger = document.getElementById('hamburger');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        if (hamburger && mobileMenu) {
+            hamburger.addEventListener('click', () => {
+                hamburger.classList.toggle('active');
+                mobileMenu.classList.toggle('active');
+            });
+
+            // 點擊菜單項目時關閉菜單
+            mobileMenu.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', () => {
+                    hamburger.classList.remove('active');
+                    mobileMenu.classList.remove('active');
+                });
+            });
+        }
+
+        // 貓爪游標邏輯
+        const catCursor = document.getElementById("cat-cursor");
+        if (catCursor) {
+            document.addEventListener("mousemove", e => {
+                catCursor.style.left = `${e.clientX}px`;
+                catCursor.style.top  = `${e.clientY}px`;
+            });
+            document.addEventListener("click", () => {
+                catCursor.style.transform = "scale(0.9)";
+                setTimeout(() => catCursor.style.transform = "scale(1)", 100);
+            });
+        }
+
+        // 初始化 Lucide 圖標
         lucide.createIcons();
+
+        // 平滑滾動時的導覽列背景效果
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('header');
+            if (header) {
+                if (window.scrollY > 50) {
+                    header.style.backdropFilter = 'blur(20px)';
+                    header.style.background = 'rgba(234, 166, 63, 0.98)';
+                } else {
+                    header.style.backdropFilter = 'blur(10px)';
+                    header.style.background = 'rgba(234, 166, 63, 0.95)';
+                }
+            }
+        });
     </script>
 </body>
 </html>

@@ -53,7 +53,7 @@ header{
     align-items:center;
     justify-content:space-between;
     padding: 30px 36px;
-    background-color: #5d3e0f;
+    background-color: #eaa63f;
     position: fixed;
     width: 100%;  
     z-index: 1000; 
@@ -98,6 +98,25 @@ nav a:hover {
     border-bottom: 2px solid #ffffff; /* 添加白色底線 */
     padding-bottom: 4px;            /* 為底線留出空間 */
     text-decoration: none;          /* 確保沒有預設底線 */
+}
+nav a:not(.current-page) {
+    background-color: #f0f0f0;
+    color: #333333 !important;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    flex: unset;
+    margin-top: 0;
+}
+nav a:not(.current-page):hover {
+    background-color: #e0e0e0;
+    color: #000000 !important;
+    border: 1px solid #aaa;
+    transform: scale(1.05);
+    cursor: pointer;
 }
 
 .current-page {
