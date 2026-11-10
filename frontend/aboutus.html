@@ -58,40 +58,8 @@
             padding-top: 0;
         }
 
-        /* 漢堡菜單動畫 */
-        .hamburger {
-            display: none;
-            flex-direction: column;
-            cursor: pointer;
-            gap: 5px;
-        }
-
-        .hamburger span {
-            width: 25px;
-            height: 3px;
-            background: white;
-            border-radius: 2px;
-            transition: all 0.3s ease;
-        }
-
-        .hamburger.active span:nth-child(1) {
-            transform: rotate(45deg) translate(8px, 8px);
-        }
-
-        .hamburger.active span:nth-child(2) {
-            opacity: 0;
-        }
-
-        .hamburger.active span:nth-child(3) {
-            transform: rotate(-45deg) translate(7px, -7px);
-        }
-
         /* 行動菜單 */
         @media (max-width: 768px) {
-            .hamburger {
-                display: flex;
-            }
-
             header nav {
                 position: absolute;
                 top: 70px;
@@ -240,16 +208,11 @@
                 </a>
             </nav>
 
-            <!-- 漢堡菜單 (手機版) -->
+            <!-- 貓臉辨識按鈕 (手機版) -->
             <div class="md:hidden flex items-center gap-4">
                 <a href="/static/index.html" class="bg-white text-yellow-600 px-3 py-1 rounded-full text-sm font-bold hover:bg-yellow-100 transition">
                     貓臉辨識
                 </a>
-                <button class="hamburger" id="hamburger">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </button>
             </div>
 
             <!-- 行動版菜單 -->
@@ -534,25 +497,6 @@
     <img id="cat-cursor" src="/static/more_img/cat_hand.png" alt="cursor" />
 
     <script>
-        // 漢堡菜單邏輯
-        const hamburger = document.getElementById('hamburger');
-        const mobileMenu = document.getElementById('mobile-menu');
-
-        if (hamburger && mobileMenu) {
-            hamburger.addEventListener('click', () => {
-                hamburger.classList.toggle('active');
-                mobileMenu.classList.toggle('active');
-            });
-
-            // 點擊菜單項目時關閉菜單
-            mobileMenu.querySelectorAll('a').forEach(link => {
-                link.addEventListener('click', () => {
-                    hamburger.classList.remove('active');
-                    mobileMenu.classList.remove('active');
-                });
-            });
-        }
-
         // 貓爪游標邏輯
         const catCursor = document.getElementById("cat-cursor");
         if (catCursor) {

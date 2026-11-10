@@ -56,35 +56,6 @@
         font-size: 14px;
       }
 
-      .hamburger {
-        display: flex;
-        flex-direction: column;
-        cursor: pointer;
-        gap: 4px;
-        position: absolute;
-        top: 15px;
-        right: 20px;
-      }
-
-      .hamburger span {
-        width: 25px;
-        height: 3px;
-        background: white;
-        border-radius: 2px;
-        transition: all 0.3s ease;
-      }
-
-      .hamburger.active span:nth-child(1) {
-        transform: rotate(45deg) translate(8px, 8px);
-      }
-
-      .hamburger.active span:nth-child(2) {
-        opacity: 0;
-      }
-
-      .hamburger.active span:nth-child(3) {
-        transform: rotate(-45deg) translate(7px, -7px);
-      }
     }
 
     .wrap {
@@ -199,12 +170,6 @@
       <p class="api">API：<span id="api-url"></span></p>
       <p class="known">已知貓咪：<span id="knownCats">載入中…</span></p>
     </div>
-
-    <button class="hamburger" id="hamburger">
-      <span></span>
-      <span></span>
-      <span></span>
-    </button>
 
     <nav id="nav-menu">
       <a href="#" class="current-page">貓臉辨識</a>
@@ -881,36 +846,7 @@
     })();
 
     // =========================
-    // 10. RWD 漢堡菜單邏輯
-    // =========================
-    const hamburger = document.getElementById('hamburger');
-    const navMenu = document.getElementById('nav-menu');
-
-    if (hamburger && navMenu) {
-      hamburger.addEventListener('click', () => {
-        hamburger.classList.toggle('active');
-        navMenu.classList.toggle('active');
-      });
-
-      // 點擊菜單項目時關閉菜單
-      navMenu.querySelectorAll('a, button').forEach(item => {
-        item.addEventListener('click', () => {
-          hamburger.classList.remove('active');
-          navMenu.classList.remove('active');
-        });
-      });
-
-      // 點擊視窗其他位置時關閉菜單
-      document.addEventListener('click', (e) => {
-        if (!hamburger.contains(e.target) && !navMenu.contains(e.target)) {
-          hamburger.classList.remove('active');
-          navMenu.classList.remove('active');
-        }
-      });
-    }
-
-    // =========================
-    // 11. 聊天室開關動畫邏輯
+    // 10. 聊天室開關動畫邏輯
     // =========================
 
     // 🟢 點擊圓形按鈕 -> 打開聊天室
